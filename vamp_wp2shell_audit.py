@@ -1587,6 +1587,110 @@ def cargar_objetivos(args) -> List[str]:
     return list(dict.fromkeys(objetivos))  # Deduplicar preservando orden de inserción
 
 
+# =============================================================================
+# CONVERSOR A FORMATO DE INFORME UNIFICADO VSL
+# =============================================================================
+
+def _findings_vsl(results: List[ScanResult]) -> list:
+    """
+    Convierte los resultados del escáner al formato Finding unificado de VampSecure Labs.
+
+    Solo se incluyen hallazgos de severidad MEDIUM, HIGH o CRITICAL con CVE confirmado
+    o con version_confirmed=False (plugin presente pero versión no legible).
+
+    Parámetros
+    ----------
+    results : List[ScanResult]  — Lista de resultados del escáner
+
+    Retorna
+    -------
+    List[Finding]  — Lista de hallazgos en formato VSL con prefijo WP-NNN
+    """
+    from vampsec_report import Finding as VSLFinding
+
+    SEVERIDADES_INCLUIDAS = {"CRITICAL", "HIGH", "MEDIUM"}
+    hallazgos: list = []
+    n = 0
+
+    for r in results:
+        if r.error == "OUT_OF_SCOPE":
+            continue
+
+        # ── Hallazgos de plugins ─────────────────────────────────────────────
+        for f in r.plugin_findings:
+            if f.get("severity") not in SEVERIDADES_INCLUIDAS:
+                continue
+            n += 1
+
+            # Evidencia detallada con datos de endpoint y versión
+            partes_evidencia = [
+                f"CVE: {f.get('cve', 'N/A')}",
+                f"CVSS: {f.get('cvss', 'N/A')}",
+                f"Autenticación requerida: {'Sí' if f.get('auth_required') else 'No'}",
+            ]
+            if f.get("detected_version"):
+                partes_evidencia.append(f"Versión detectada: {f['detected_version']}")
+            elif not f.get("version_confirmed"):
+                partes_evidencia.append("Versión: no legible (plugin presente en servidor)")
+            if f.get("upload_endpoint"):
+                accesible = f.get("endpoint_accessible", False)
+                estado    = f.get("endpoint_status", "—")
+                partes_evidencia.append(
+                    f"Endpoint de subida: {f['upload_endpoint']} "
+                    f"[{'ACCESIBLE' if accesible else 'no accesible'}, HTTP {estado}]"
+                )
+
+            hallazgos.append(VSLFinding(
+                id          = f"WP-{n:03d}",
+                title       = f"{f.get('cve', 'Vulnerabilidad')} — {f.get('description', '')[:80]}",
+                severity    = f.get("severity", "MEDIUM"),
+                description = f.get("description", "Vulnerabilidad detectada en plugin WordPress."),
+                evidence    = " | ".join(partes_evidencia),
+                affected    = r.target,
+                remediation = (
+                    f"Actualizar el plugin a la versión parcheada que corrige {f.get('cve', 'este CVE')}. "
+                    "Consultar el aviso oficial del autor del plugin o el repositorio de WordPress.org."
+                ),
+                cvss        = f.get("cvss"),
+                cve         = f.get("cve"),
+                tags        = ["wordpress", "plugin", f.get("severity", "MEDIUM").lower()],
+            ))
+
+        # ── Hallazgos de temas ───────────────────────────────────────────────
+        for f in r.theme_findings:
+            if f.get("severity") not in SEVERIDADES_INCLUIDAS:
+                continue
+            n += 1
+
+            partes_evidencia = [
+                f"CVE: {f.get('cve', 'N/A')}",
+                f"CVSS: {f.get('cvss', 'N/A')}",
+                f"Autenticación requerida: {'Sí' if f.get('auth_required') else 'No'}",
+            ]
+            if f.get("detected_version"):
+                partes_evidencia.append(f"Versión detectada: {f['detected_version']}")
+            if f.get("upload_endpoint"):
+                partes_evidencia.append(f"Endpoint afectado: {f['upload_endpoint']}")
+
+            hallazgos.append(VSLFinding(
+                id          = f"WP-{n:03d}",
+                title       = f"{f.get('cve', 'Vulnerabilidad')} — {f.get('description', '')[:80]}",
+                severity    = f.get("severity", "MEDIUM"),
+                description = f.get("description", "Vulnerabilidad detectada en tema WordPress."),
+                evidence    = " | ".join(partes_evidencia),
+                affected    = r.target,
+                remediation = (
+                    f"Actualizar el tema a la versión parcheada que corrige {f.get('cve', 'este CVE')}. "
+                    "Consultar el aviso oficial del desarrollador del tema o el repositorio de WordPress.org."
+                ),
+                cvss        = f.get("cvss"),
+                cve         = f.get("cve"),
+                tags        = ["wordpress", "theme", f.get("severity", "MEDIUM").lower()],
+            ))
+
+    return hallazgos
+
+
 def main():
     console.print(BANNER, style="bold magenta")
 
@@ -1621,6 +1725,11 @@ def main():
                         help="Ruta del informe HTML de salida")
     parser.add_argument("-v", "--verbose",     action="store_true",
                         help="Salida detallada")
+
+    # Argumentos de informe unificado VSL (--client, --engagement, --auditor,
+    # --report-scope, --report-html, --report-pdf)
+    from vampsec_report import add_report_args
+    add_report_args(parser)
 
     args = parser.parse_args()
 
@@ -1663,6 +1772,18 @@ def main():
     if args.html:
         ReportGenerator.to_html(resultados, args.html)
         console.print(f"[bold green][✓] Informe HTML guardado: {args.html}[/bold green]")
+
+    # ── Informe unificado VSL (cliente) ───────────────────────────────────────
+    if getattr(args, "report_html", None) or getattr(args, "report_pdf", None):
+        from vampsec_report import VampSecReport, meta_from_args
+        meta   = meta_from_args(args, tool="vamp-wp2shell-audit", version="1.0")
+        report = VampSecReport(meta=meta, findings=_findings_vsl(resultados))
+        if args.report_html:
+            report.to_html_client(args.report_html)
+            console.print(f"[bold green][✓] Informe cliente HTML guardado: {args.report_html}[/bold green]")
+        if args.report_pdf:
+            report.to_pdf(args.report_pdf)
+            console.print(f"[bold green][✓] Informe cliente PDF guardado: {args.report_pdf}[/bold green]")
 
     # Resumen final de la auditoría
     total_cves   = sum(len(r.plugin_findings) for r in resultados)
