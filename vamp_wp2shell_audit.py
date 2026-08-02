@@ -311,6 +311,10 @@ class ScanResult:
     risk_score: float = 0.0
     risk_level: str = "UNKNOWN"
     error: Optional[str] = None
+    # Multi-CMS (Joomla / Drupal)
+    cms_type: str = ""                                     # "Joomla" | "Drupal" | ""
+    cms_version: Optional[str] = None
+    cms_findings: List[Dict] = field(default_factory=list)
 
 
 # =============================================================================
@@ -445,6 +449,308 @@ class WPDetector:
                 break
 
         return es_wp, version
+
+
+# =============================================================================
+# SOPORTE MULTI-CMS — JOOMLA Y DRUPAL
+# =============================================================================
+
+class JoomlaDetector:
+    """
+    Detecta instalaciones Joomla de forma pasiva (HTML + cabeceras) y obtiene
+    la versión del core mediante una sonda ligera a la manifest XML pública.
+    """
+
+    INDICADORES = [
+        "Joomla!", "/components/com_", "/media/joomla_icon.ico",
+        "/media/com_joomla/", "/plugins/system/cache/",
+        "com_content", "option=com_",
+    ]
+    _RX_VERSION = re.compile(r'content=["\']Joomla!\s*-?\s*Open\s*Source\s*CMS\s*([\d.]+)', re.I)
+    _MANIFEST    = "/administrator/manifests/files/joomla.xml"
+
+    @classmethod
+    def detect_passive(cls, contenido: str, cabeceras: Dict) -> bool:
+        combinado = contenido[:50000] + str(cabeceras)
+        return any(ind.lower() in combinado.lower() for ind in cls.INDICADORES)
+
+    @classmethod
+    async def get_version(cls, session: "aiohttp.ClientSession", url_base: str, timeout) -> Optional[str]:
+        """Intenta leer la versión del core desde la manifest XML pública de Joomla."""
+        try:
+            manifest_url = url_base.rstrip("/") + cls._MANIFEST
+            async with session.get(manifest_url, timeout=timeout, ssl=False) as r:
+                if r.status == 200:
+                    text = await r.text(errors="replace")
+                    m = re.search(r"<version>([\d.]+)</version>", text)
+                    if m:
+                        return m.group(1)
+        except Exception:
+            pass
+        return None
+
+
+class JoomlaAuditor:
+    """
+    Sondea vectores de seguridad específicos de instalaciones Joomla.
+
+    Checks implementados
+    --------------------
+    · CVE-2023-23752 : Endpoint API sin autenticación expone configuración de BD
+    · Admin panel    : /administrator/ accesible sin autenticación (MEDIUM)
+    · Backups config : Ficheros de configuración de respaldo accesibles (CRITICAL)
+    · Debug mode     : Modo depuración activo en producción (MEDIUM)
+    """
+
+    _BACKUP_PATHS = [
+        "/configuration.php.bak", "/configuration.php.old",
+        "/configuration.php~", "/configuration.php.orig",
+        "/.configuration.php.swp",
+    ]
+
+    def __init__(self, session: "aiohttp.ClientSession") -> None:
+        self._s = session
+
+    async def run(self, url_base: str, timeout) -> List[Dict]:
+        """Ejecuta todos los checks de Joomla en paralelo y retorna la lista de hallazgos."""
+        hallazgos: List[Dict] = []
+
+        checks = await asyncio.gather(
+            self._check_cve_2023_23752(url_base, timeout),
+            self._check_admin_exposure(url_base, timeout),
+            self._check_config_backups(url_base, timeout),
+            return_exceptions=True,
+        )
+
+        for check in checks:
+            if isinstance(check, list):
+                hallazgos.extend(check)
+        return hallazgos
+
+    async def _check_cve_2023_23752(self, url_base: str, timeout) -> List[Dict]:
+        """
+        CVE-2023-23752 — API REST de Joomla! sin autenticación expone configuración
+        de base de datos (host, usuario, nombre, contraseña) en texto claro.
+        Afecta Joomla 4.0.0 – 4.2.7.
+        """
+        import json as _json
+        endpoint = url_base.rstrip("/") + "/api/index.php/v1/config/application?public=true"
+        try:
+            async with self._s.get(endpoint, timeout=timeout, ssl=False) as r:
+                if r.status == 200:
+                    ct = r.headers.get("Content-Type", "")
+                    if "json" in ct:
+                        body = await r.text(errors="replace")
+                        try:
+                            data = _json.loads(body)
+                        except Exception:
+                            return []
+                        # La respuesta vulnerable contiene atributos de configuración de BD
+                        if isinstance(data, dict) and "data" in data:
+                            attrs = {
+                                item.get("attributes", {}).get("name", ""): True
+                                for item in data["data"]
+                                if isinstance(item, dict)
+                            }
+                            if "db" in attrs or "dbhost" in attrs or "user" in attrs:
+                                return [{"cve": "CVE-2023-23752", "severity": "CRITICAL",
+                                    "description": "API sin auth expone configuración de BD (Joomla 4.0–4.2.7)",
+                                    "cvss": 7.5, "evidence": endpoint,
+                                    "remediation": "Actualizar a Joomla 4.2.8+ o 3.10.12+. "
+                                                   "Parche disponible en el canal oficial."}]
+        except Exception:
+            pass
+        return []
+
+    async def _check_admin_exposure(self, url_base: str, timeout) -> List[Dict]:
+        """Verifica si el panel de administración es accesible sin autenticación previa."""
+        try:
+            async with self._s.get(
+                url_base.rstrip("/") + "/administrator/index.php",
+                timeout=timeout, ssl=False, allow_redirects=True,
+            ) as r:
+                if r.status == 200:
+                    texto = await r.text(errors="replace")
+                    if "administrator" in texto.lower() and "joomla" in texto.lower():
+                        return [{"cve": None, "severity": "MEDIUM",
+                            "description": "Panel de administración Joomla accesible (sin auth previa)",
+                            "cvss": 5.3, "evidence": url_base + "/administrator/index.php",
+                            "remediation": "Restringir /administrator/ por IP o implementar "
+                                           "autenticación de doble factor. Considerar renombrar "
+                                           "el directorio admin (extensión AdminExile/RSFirewall)."}]
+        except Exception:
+            pass
+        return []
+
+    async def _check_config_backups(self, url_base: str, timeout) -> List[Dict]:
+        """Busca ficheros de configuración de respaldo que exponen credenciales de BD."""
+        hallazgos: List[Dict] = []
+        for path in self._BACKUP_PATHS:
+            try:
+                async with self._s.get(
+                    url_base.rstrip("/") + path, timeout=timeout, ssl=False
+                ) as r:
+                    if r.status == 200:
+                        texto = await r.text(errors="replace")
+                        if "JConfig" in texto or "public $db" in texto or "mysqli" in texto.lower():
+                            hallazgos.append({"cve": None, "severity": "CRITICAL",
+                                "description": f"Fichero de configuración Joomla accesible: {path}",
+                                "cvss": 9.1, "evidence": url_base + path,
+                                "remediation": "Eliminar inmediatamente todos los ficheros de "
+                                               "respaldo de configuración del servidor web. "
+                                               "Configurar el servidor para denegar acceso a *.bak/*.old."})
+            except Exception:
+                continue
+        return hallazgos
+
+
+class DrupalDetector:
+    """
+    Detecta instalaciones Drupal de forma pasiva (HTML + cabeceras) y obtiene
+    la versión del core desde el CHANGELOG.txt público cuando está disponible.
+    """
+
+    INDICADORES = [
+        "Drupal", "/sites/default/files/", "/sites/all/modules/",
+        "Drupal.settings", "/misc/drupal.js", "drupal.org",
+        "/core/misc/drupal.js", "X-Generator: Drupal",
+    ]
+    _RX_GENERATOR = re.compile(r'content=["\']Drupal\s*([\d.]+)', re.I)
+    _RX_CHANGELOG  = re.compile(r"Drupal\s*([\d.]+),\s*\d{4}-\d{2}-\d{2}", re.I)
+
+    @classmethod
+    def detect_passive(cls, contenido: str, cabeceras: Dict) -> bool:
+        combinado = contenido[:50000] + str(cabeceras)
+        return any(ind.lower() in combinado.lower() for ind in cls.INDICADORES)
+
+    @classmethod
+    async def get_version(cls, session: "aiohttp.ClientSession", url_base: str, timeout) -> Optional[str]:
+        """Intenta leer la versión del core desde CHANGELOG.txt (Drupal 6/7) o /core/ (8+)."""
+        for path in ("/core/CHANGELOG.txt", "/CHANGELOG.txt"):
+            try:
+                async with session.get(
+                    url_base.rstrip("/") + path, timeout=timeout, ssl=False
+                ) as r:
+                    if r.status == 200:
+                        text = await r.text(errors="replace")
+                        m = cls._RX_CHANGELOG.search(text)
+                        if m:
+                            return m.group(1)
+            except Exception:
+                continue
+        # Fallback: cabecera X-Generator
+        return None
+
+
+class DrupalAuditor:
+    """
+    Sondea vectores de seguridad específicos de instalaciones Drupal.
+
+    Checks implementados
+    --------------------
+    · CVE-2018-7600 : Drupalgeddon 2 — RCE sin autenticación (Drupal < 8.5.1)
+    · Exposed install.php  : Interfaz de instalación accesible (HIGH)
+    · Exposed update.php   : Interfaz de actualización accesible (HIGH)
+    · CHANGELOG.txt público: Expone versión exact (MEDIUM)
+    """
+
+    def __init__(self, session: "aiohttp.ClientSession") -> None:
+        self._s = session
+
+    async def run(self, url_base: str, timeout) -> List[Dict]:
+        hallazgos: List[Dict] = []
+        checks = await asyncio.gather(
+            self._check_drupalgeddon2(url_base, timeout),
+            self._check_install_update_php(url_base, timeout),
+            self._check_changelog_exposure(url_base, timeout),
+            return_exceptions=True,
+        )
+        for check in checks:
+            if isinstance(check, list):
+                hallazgos.extend(check)
+        return hallazgos
+
+    async def _check_drupalgeddon2(self, url_base: str, timeout) -> List[Dict]:
+        """
+        CVE-2018-7600 — Drupalgeddon 2: RCE sin autenticación a través de la API
+        de AJAX de formularios. La sonda comprueba si el endpoint vulnerable
+        responde con una estructura JSON esperada sin intentar ejecutar código.
+        """
+        endpoint = (
+            url_base.rstrip("/") +
+            "/user/register?element_parents=account/mail/%23value"
+            "&ajax_form=1&_wrapper_format=drupal_ajax"
+        )
+        try:
+            async with self._s.post(
+                endpoint, timeout=timeout, ssl=False,
+                data={"form_id": "user_register_form", "_drupal_ajax": "1"},
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            ) as r:
+                if r.status in (200, 422, 400):
+                    ct = r.headers.get("Content-Type", "")
+                    if "json" in ct:
+                        body = await r.text(errors="replace")
+                        # Respuesta vulnerable: array JSON con objetos {command, ...}
+                        if body.strip().startswith("[") and '"command"' in body:
+                            return [{"cve": "CVE-2018-7600", "severity": "CRITICAL",
+                                "description": "Drupalgeddon 2 — endpoint AJAX de formulario "
+                                               "responde con estructura JSON vulnerable (Drupal < 8.5.1)",
+                                "cvss": 9.8, "evidence": endpoint,
+                                "remediation": "Actualizar Drupal a 8.5.1+ (o 7.58+). "
+                                               "Aplicar parche SA-CORE-2018-002. "
+                                               "Deshabilitar el módulo AJAX si no se usa."}]
+        except Exception:
+            pass
+        return []
+
+    async def _check_install_update_php(self, url_base: str, timeout) -> List[Dict]:
+        """Detecta interfaces de instalación/actualización expuestas sin acceso restringido."""
+        hallazgos: List[Dict] = []
+        paths = [
+            ("/core/install.php", "Interfaz de instalación Drupal 8+ accesible sin restricción"),
+            ("/install.php",      "Interfaz de instalación Drupal 7 accesible sin restricción"),
+            ("/update.php",       "Interfaz de actualización Drupal accesible sin restricción"),
+        ]
+        for path, desc in paths:
+            try:
+                async with self._s.get(
+                    url_base.rstrip("/") + path, timeout=timeout, ssl=False
+                ) as r:
+                    if r.status == 200:
+                        texto = await r.text(errors="replace")
+                        if "Drupal" in texto and (
+                            "install" in texto.lower() or "update" in texto.lower()
+                        ):
+                            hallazgos.append({"cve": None, "severity": "HIGH",
+                                "description": desc,
+                                "cvss": 7.3, "evidence": url_base + path,
+                                "remediation": "Restringir el acceso a install.php y update.php "
+                                               "por IP en el servidor web o eliminarlos si no se usan. "
+                                               "En Apache: Deny from all en .htaccess para esos ficheros."})
+            except Exception:
+                continue
+        return hallazgos
+
+    async def _check_changelog_exposure(self, url_base: str, timeout) -> List[Dict]:
+        """Detecta exposición del CHANGELOG.txt que revela la versión exacta de Drupal."""
+        for path in ("/core/CHANGELOG.txt", "/CHANGELOG.txt"):
+            try:
+                async with self._s.get(
+                    url_base.rstrip("/") + path, timeout=timeout, ssl=False
+                ) as r:
+                    if r.status == 200:
+                        texto = await r.text(errors="replace")
+                        if "Drupal" in texto and "release" in texto.lower():
+                            return [{"cve": None, "severity": "MEDIUM",
+                                "description": f"CHANGELOG.txt público expone versión exacta de Drupal ({path})",
+                                "cvss": 5.3, "evidence": url_base + path,
+                                "remediation": "Configurar el servidor web para bloquear acceso "
+                                               "a ficheros .txt en la raíz de Drupal. "
+                                               "Apache: FilesMatch directive. nginx: location ~* \\.txt$"}]
+            except Exception:
+                continue
+        return []
 
 
 # =============================================================================
@@ -1253,8 +1559,25 @@ class WPScanner:
             resultado.error = str(e)[:100]
             return resultado
 
-        # Si no es WordPress y no se fuerza el análisis, terminar aquí
-        if not resultado.is_wordpress and not self.args.force:
+        # ── Detección multi-CMS (Joomla / Drupal) ─────────────────────────────
+        if not resultado.is_wordpress:
+            if JoomlaDetector.detect_passive(contenido, {}):
+                resultado.cms_type    = "Joomla"
+                resultado.cms_version = await JoomlaDetector.get_version(session, url_base, tiempo_limite)
+                auditor_joomla = JoomlaAuditor(session)
+                resultado.cms_findings = await auditor_joomla.run(url_base, tiempo_limite)
+            elif DrupalDetector.detect_passive(contenido, {}):
+                resultado.cms_type    = "Drupal"
+                resultado.cms_version = await DrupalDetector.get_version(session, url_base, tiempo_limite)
+                auditor_drupal = DrupalAuditor(session)
+                resultado.cms_findings = await auditor_drupal.run(url_base, tiempo_limite)
+
+        # Si no es WordPress ni otro CMS conocido y no se fuerza el análisis, terminar aquí
+        if not resultado.is_wordpress and not resultado.cms_type and not self.args.force:
+            return resultado
+
+        # Las fases 2-5 son exclusivas de WordPress; si es otro CMS, retornar con hallazgos ya recogidos
+        if resultado.cms_type and not resultado.is_wordpress:
             return resultado
 
         # ── Fase 2: Mapeo de superficie (todas las verificaciones en paralelo) ─
@@ -1473,12 +1796,23 @@ def mostrar_tabla_resultados(results: List[ScanResult]):
             else ("[dim]—[/dim]" if not r.canary else "[yellow]intentado[/yellow]")
         )
 
+        # Mostrar CMS detectado: WordPress o Joomla/Drupal
+        if r.is_wordpress:
+            cms_cell = "[green]WP[/green]"
+            ver_cell  = r.wp_version or "—"
+        elif r.cms_type:
+            cms_cell = f"[cyan]{r.cms_type}[/cyan]"
+            ver_cell  = r.cms_version or "—"
+        else:
+            cms_cell = "[dim]—[/dim]"
+            ver_cell  = "—"
+
         tabla.add_row(
             r.target,
-            "[green]✓[/green]" if r.is_wordpress else "[dim]✗[/dim]",
-            r.wp_version or "—",
+            cms_cell,
+            ver_cell,
             str(len(r.installed_plugins)) if r.installed_plugins else "—",
-            str(len(r.plugin_findings)),
+            str(len(r.plugin_findings) + len(r.cms_findings)),
             str(vectores_subida) if vectores_subida else "—",
             str(len(r.sqli_vectors)) if r.sqli_vectors else "—",
             canario_str,
@@ -1499,10 +1833,16 @@ def mostrar_paneles_detalle(results: List[ScanResult]):
             f for f in r.plugin_findings + r.theme_findings
             if f.get("cvss", 0) >= 7.0
         ]
-        if not hallazgos_relevantes and not r.sqli_vectors:
+        # Mostrar también hallazgos de Joomla/Drupal
+        cms_relevantes = [f for f in r.cms_findings if f.get("cvss", 0) >= 5.0]
+        if not hallazgos_relevantes and not r.sqli_vectors and not cms_relevantes:
             continue
 
-        lineas = [f"[bold]{r.target}[/bold]  (WP {r.wp_version or 'desconocida'})"]
+        if r.cms_type:
+            cms_ver = f" v{r.cms_version}" if r.cms_version else ""
+            lineas = [f"[bold]{r.target}[/bold]  ({r.cms_type}{cms_ver})"]
+        else:
+            lineas = [f"[bold]{r.target}[/bold]  (WP {r.wp_version or 'desconocida'})"]
 
         # Indicadores de superficie de ataque detectados
         superficie = []
@@ -1539,6 +1879,18 @@ def mostrar_paneles_detalle(results: List[ScanResult]):
         for v in r.sqli_vectors:
             lineas.append(f"\n  [bold red]► Vector SQLi[/bold red]  {v.get('url', '')}")
             lineas.append(f"    {v.get('description', '')}")
+
+        # Hallazgos Joomla / Drupal
+        for f in cms_relevantes:
+            sev_color = {"CRITICAL": "red", "HIGH": "yellow", "MEDIUM": "magenta"}.get(f.get("severity", ""), "white")
+            cve_label = f.get("cve") or "Misconfiguration"
+            lineas.append(
+                f"\n  [bold {sev_color}]► {cve_label}[/bold {sev_color}]  "
+                f"CVSS {f.get('cvss', '?')}  [{f.get('severity', 'MEDIUM')}]"
+            )
+            lineas.append(f"    {f.get('description', '')}")
+            if f.get("evidence"):
+                lineas.append(f"    [dim]Evidencia:[/dim] {f['evidence']}")
 
         # Resultado del canario
         if r.canary and r.canary.get("intentado"):
@@ -1686,6 +2038,28 @@ def _findings_vsl(results: List[ScanResult]) -> list:
                 cvss        = f.get("cvss"),
                 cve         = f.get("cve"),
                 tags        = ["wordpress", "theme", f.get("severity", "MEDIUM").lower()],
+            ))
+
+        # ── Hallazgos Joomla / Drupal ─────────────────────────────────────────
+        cms_label = r.cms_type.lower() if r.cms_type else "cms"
+        for f in r.cms_findings:
+            if f.get("severity") not in SEVERIDADES_INCLUIDAS:
+                continue
+            n += 1
+            ev_parts = [f"Evidencia: {f.get('evidence', r.target)}"]
+            if f.get("cvss"):
+                ev_parts.append(f"CVSS: {f['cvss']}")
+            hallazgos.append(VSLFinding(
+                id          = f"WP-{n:03d}",
+                title       = f"{f.get('cve') or 'Misconfiguration'} — {f.get('description', '')[:80]}",
+                severity    = f.get("severity", "MEDIUM"),
+                description = f.get("description", f"Hallazgo de seguridad en {r.cms_type}."),
+                evidence    = " | ".join(ev_parts),
+                affected    = r.target,
+                remediation = f.get("remediation", f"Revisar la configuración de {r.cms_type} y aplicar actualizaciones."),
+                cvss        = f.get("cvss"),
+                cve         = f.get("cve"),
+                tags        = [cms_label, "cms", f.get("severity", "MEDIUM").lower()],
             ))
 
     return hallazgos
