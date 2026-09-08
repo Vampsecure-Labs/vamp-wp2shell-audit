@@ -92,14 +92,14 @@ console = Console()
 
 # Cabecera ASCII impresa al inicio de cada ejecución
 BANNER = r"""
-  ____   ____    _    __  __ ____  _____ ____ _   _ ____  _____   _        _    ____ ____
- \ \ / / _  |  / \  |  \/  |  _ \/ ____/ ___| | | |  _ \| ____| | |      / \  | __ ) ___|
-  \ V / (_| | / _ \ | |\/| | |_) \___ \| |___| | | | |_) |  _|   | |     / _ \ |  _ \___ \
-   | |  \__, |/ ___ \| |  | |  __/ ___) |___  | |_| |  _ <| |___  | |___ / ___ \| |_) |__) |
-   |_|     /_/_/   \_|_|  |_|_|   |____/\____|\___/|_| \_|_____| |_____/_/   \_|____/____/
-     by VampSecure Studios · vamp-wp2shell-audit v1.0 · WordPress Upload Vector Auditor
-     ──────────────────────────────────────────────────────────────────────────────────────
-     USO EXCLUSIVO EN AUDITORÍAS AUTORIZADAS · El uso no autorizado es ilegal
+__   ___   __  __ ___  ___ ___ ___ _   _ ___ ___ _      _   ___ ___ 
+\ \ / /_\ |  \/  | _ \/ __| __/ __| | | | _ \ __| |    /_\ | _ ) __|
+ \ V / _ \| |\/| |  _/\__ \ _| (__| |_| |   / _|| |__ / _ \| _ \__ \
+  \_/_/ \_\_|  |_|_|  |___/___\___|\___/|_|_\___|____/_/ \_\___/___/
+  by Antonio Hernandez "Belky" — VampSecure Studios
+  vamp-wp2shell-audit v1.0 · WordPress Upload Vector Auditor
+  ────────────────────────────────────────────────────────────────────────
+  USO EXCLUSIVO EN AUDITORÍAS AUTORIZADAS · El uso no autorizado es ilegal
 """
 
 # =============================================================================
@@ -475,7 +475,7 @@ class WPDetector:
     """
 
     # Indicadores de presencia de WordPress
-    INDICADORES = [
+    SENALES = [
         "/wp-content/", "/wp-includes/", "wp-login.php",
         "WordPress", "woocommerce", "/wp-json/",
         "xmlrpc.php", "wp-admin",
@@ -499,7 +499,7 @@ class WPDetector:
         """
         # Limitar el análisis a los primeros 50 KB para evitar regex lentos en páginas enormes
         combinado = contenido[:50000] + str(cabeceras)
-        es_wp = any(ind.lower() in combinado.lower() for ind in cls.INDICADORES)
+        es_wp = any(ind.lower() in combinado.lower() for ind in cls.SENALES)
 
         version = None
         for rx in WP_VERSION_RE:
@@ -521,7 +521,7 @@ class JoomlaDetector:
     la versión del core mediante una sonda ligera a la manifest XML pública.
     """
 
-    INDICADORES = [
+    SENALES = [
         "Joomla!", "/components/com_", "/media/joomla_icon.ico",
         "/media/com_joomla/", "/plugins/system/cache/",
         "com_content", "option=com_",
@@ -532,7 +532,7 @@ class JoomlaDetector:
     @classmethod
     def detect_passive(cls, contenido: str, cabeceras: Dict) -> bool:
         combinado = contenido[:50000] + str(cabeceras)
-        return any(ind.lower() in combinado.lower() for ind in cls.INDICADORES)
+        return any(ind.lower() in combinado.lower() for ind in cls.SENALES)
 
     @classmethod
     async def get_version(cls, session: "aiohttp.ClientSession", url_base: str, timeout) -> Optional[str]:
@@ -670,7 +670,7 @@ class DrupalDetector:
     la versión del core desde el CHANGELOG.txt público cuando está disponible.
     """
 
-    INDICADORES = [
+    SENALES = [
         "Drupal", "/sites/default/files/", "/sites/all/modules/",
         "Drupal.settings", "/misc/drupal.js", "drupal.org",
         "/core/misc/drupal.js", "X-Generator: Drupal",
@@ -681,7 +681,7 @@ class DrupalDetector:
     @classmethod
     def detect_passive(cls, contenido: str, cabeceras: Dict) -> bool:
         combinado = contenido[:50000] + str(cabeceras)
-        return any(ind.lower() in combinado.lower() for ind in cls.INDICADORES)
+        return any(ind.lower() in combinado.lower() for ind in cls.SENALES)
 
     @classmethod
     async def get_version(cls, session: "aiohttp.ClientSession", url_base: str, timeout) -> Optional[str]:
