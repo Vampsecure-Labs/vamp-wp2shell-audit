@@ -1,3 +1,4 @@
+<!-- © VampSecure Studios — VampSecure Labs Security Research Division -->
 <h1 align="center">vamp-wp2shell-audit</h1>
 
 <p align="center">
@@ -32,6 +33,13 @@
 - Optional: `fpdf2 >= 2.7` for `--report-pdf`
 
 ## Installation
+
+
+```bash
+pip install vamp-wp2shell-audit
+# o con Homebrew:
+brew install vampsecure-labs/labs/vamp-wp2shell-audit
+```
 
 ```bash
 git clone https://github.com/belky-me/vamp-wp2shell-audit.git
@@ -136,3 +144,6 @@ Use exclusively on systems you own or for which you hold explicit written author
 ---
 
 © VampSecure Studios — VampSecure Labs Security Research Division
+
+## Versión
+v1.1 — VampSecure Labs Security Research Division

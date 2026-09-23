@@ -97,7 +97,7 @@ __   ___   __  __ ___  ___ ___ ___ _   _ ___ ___ _      _   ___ ___
  \ V / _ \| |\/| |  _/\__ \ _| (__| |_| |   / _|| |__ / _ \| _ \__ \
   \_/_/ \_\_|  |_|_|  |___/___\___|\___/|_|_\___|____/_/ \_\___/___/
   by Antonio Hernandez "Belky" — VampSecure Studios
-  vamp-wp2shell-audit v1.1 · WordPress Upload Vector Auditor
+  vamp-wp2shell-audit v1.2 · WordPress Upload Vector Auditor
   ────────────────────────────────────────────────────────────────────────
   USO EXCLUSIVO EN AUDITORÍAS AUTORIZADAS · El uso no autorizado es ilegal
 """
@@ -504,6 +504,10 @@ class ScanResult:
     cms_type: str = ""                                     # "Joomla" | "Drupal" | ""
     cms_version: Optional[str] = None
     cms_findings: List[Dict] = field(default_factory=list)
+    # Hallazgos XML-RPC detallados: lista de métodos expuestos (vacía si XMLRPC deshabilitado)
+    xmlrpc_methods: List[str] = field(default_factory=list)
+    # True si /wp-json/wp/v2/ responde aunque /users esté protegido
+    rest_api_base_accessible: bool = False
 
 
 # =============================================================================
@@ -1159,15 +1163,19 @@ class UploadChecker:
         self.session = session
         self.to = aiohttp.ClientTimeout(total=8)
 
-    async def check_xmlrpc(self, url_base: str) -> bool:
+    async def check_xmlrpc(self, url_base: str) -> Tuple[bool, List[str]]:
         """
-        Verifica si XML-RPC está habilitado enviando una llamada a system.listMethods.
+        Verifica si XML-RPC está habilitado y extrae la lista de métodos expuestos.
 
         XML-RPC habilitado es un factor de riesgo porque permite ataques de
         fuerza bruta multi-llamada (una petición = múltiples intentos de login)
         y puede ser el vector de exploits de plugins como CVE-2020-25213.
 
-        Retorna True si XML-RPC responde con una lista de métodos válida.
+        Adicionalmente, métodos como wp.getUsersBlogs o system.multicall
+        elevan la severidad al permitir enumeración de usuarios y amplificación
+        de peticiones de autenticación (HTTP multiplexing attack).
+
+        Retorna (habilitado, lista_de_métodos). Si está deshabilitado: (False, []).
         """
         try:
             async with self.session.post(
@@ -1178,9 +1186,14 @@ class UploadChecker:
                 ssl=False,
             ) as r:
                 cuerpo = await r.text(errors="replace")
-                return r.status == 200 and "<methodResponse>" in cuerpo
+                if r.status != 200 or "<methodResponse>" not in cuerpo:
+                    return False, []
+                # Extraer los nombres de método de la respuesta XML
+                import re
+                metodos = re.findall(r"<string>([^<]+)</string>", cuerpo)
+                return True, metodos
         except Exception:
-            return False
+            return False, []
 
     async def check_rest_api(self, url_base: str) -> bool:
         """
@@ -1200,6 +1213,31 @@ class UploadChecker:
             ) as r:
                 cuerpo = await r.text(errors="replace")
                 return r.status == 200 and '"id"' in cuerpo
+        except Exception:
+            return False
+
+    async def check_rest_api_base(self, url_base: str) -> bool:
+        """
+        Comprueba si el endpoint base de la API REST (/wp-json/wp/v2/) responde
+        incluso cuando /users está protegido.
+
+        Un endpoint base accesible indica que la API REST está habilitada; si además
+        /users devuelve datos la severidad es mayor (WP_REST_USER_ENUM).
+
+        Retorna True si /wp-json/wp/v2/ responde con JSON de la API (code/routes).
+        """
+        try:
+            async with self.session.get(
+                f"{url_base}/wp-json/wp/v2/",
+                timeout=self.to,
+                ssl=False,
+                allow_redirects=True,
+            ) as r:
+                if r.status != 200:
+                    return False
+                cuerpo = await r.text(errors="replace")
+                # La API REST base devuelve JSON con campos "namespace" o "routes"
+                return '"namespace"' in cuerpo or '"routes"' in cuerpo
         except Exception:
             return False
 
@@ -1568,7 +1606,7 @@ class ReportGenerator:
         """
         datos = {
             "tool": "vamp-wp2shell-audit",
-            "version": "1.1",
+            "version": "1.2",
             "generated": datetime.now(timezone.utc).isoformat(),
             "summary": {
                 "objetivos": len(results),
@@ -1771,9 +1809,10 @@ class WPScanner:
 
         # ── Fase 2: Mapeo de superficie (todas las verificaciones en paralelo) ─
         verificador = UploadChecker(session)
-        (xmlrpc, rest_api, upload_dir, debug, sqli) = await asyncio.gather(
+        (xmlrpc_result, rest_api, rest_api_base, upload_dir, debug, sqli) = await asyncio.gather(
             verificador.check_xmlrpc(url_base),
             verificador.check_rest_api(url_base),
+            verificador.check_rest_api_base(url_base),
             verificador.check_upload_dir_listing(url_base),
             verificador.check_debug_mode(url_base),
             verificador.detectar_sqli_vectors(url_base),
@@ -1781,11 +1820,87 @@ class WPScanner:
         )
 
         # Asignar resultados de forma segura (si gather devuelve una excepción, usar valor por defecto)
-        resultado.xmlrpc_enabled    = bool(xmlrpc)    if not isinstance(xmlrpc,    Exception) else False
-        resultado.rest_api_exposed  = bool(rest_api)  if not isinstance(rest_api,  Exception) else False
-        resultado.upload_dir_exposed = bool(upload_dir) if not isinstance(upload_dir, Exception) else False
-        resultado.debug_mode        = bool(debug)     if not isinstance(debug,     Exception) else False
-        resultado.sqli_vectors      = sqli            if isinstance(sqli, list) else []
+        if isinstance(xmlrpc_result, tuple):
+            resultado.xmlrpc_enabled = xmlrpc_result[0]
+            resultado.xmlrpc_methods = xmlrpc_result[1]
+        elif isinstance(xmlrpc_result, Exception):
+            resultado.xmlrpc_enabled = False
+            resultado.xmlrpc_methods = []
+        else:
+            resultado.xmlrpc_enabled = bool(xmlrpc_result)
+            resultado.xmlrpc_methods = []
+
+        resultado.rest_api_exposed       = bool(rest_api)       if not isinstance(rest_api,       Exception) else False
+        resultado.rest_api_base_accessible = bool(rest_api_base) if not isinstance(rest_api_base, Exception) else False
+        resultado.upload_dir_exposed     = bool(upload_dir)     if not isinstance(upload_dir,     Exception) else False
+        resultado.debug_mode             = bool(debug)          if not isinstance(debug,           Exception) else False
+        resultado.sqli_vectors           = sqli                  if isinstance(sqli, list) else []
+
+        # ── Hallazgos XML-RPC y REST API ──────────────────────────────────────
+        # Los hallazgos se almacenan como "plugin_findings" para reutilizar el
+        # pipeline de reporte existente, con tipo="surface" para diferenciarlos.
+        if resultado.xmlrpc_enabled and getattr(self.args, "check_xmlrpc", True):
+            # Detectar métodos de alto riesgo
+            metodos_alto_riesgo = {"wp.getUsersBlogs", "system.multicall", "wp.getUsers",
+                                   "wp.getAuthors", "wp.getUserInfo"}
+            metodos_expuestos_ar = [m for m in resultado.xmlrpc_methods if m in metodos_alto_riesgo]
+            if metodos_expuestos_ar:
+                severidad = "HIGH"
+                descripcion = (
+                    f"XML-RPC habilitado con métodos de alto riesgo: {', '.join(metodos_expuestos_ar)}. "
+                    "Los métodos wp.getUsersBlogs/wp.getUsers permiten enumerar usuarios "
+                    "sin autenticación; system.multicall habilita amplificación de ataques "
+                    "de fuerza bruta (cientos de intentos por petición HTTP)."
+                )
+            else:
+                severidad = "MEDIUM"
+                n_metodos = len(resultado.xmlrpc_methods)
+                descripcion = (
+                    f"XML-RPC habilitado ({n_metodos} métodos expuestos). "
+                    "Amplía la superficie de ataque: permite fuerza bruta de credenciales "
+                    "y puede ser vector de exploits de plugins (CVE-2020-25213 y similares). "
+                    "Deshabilitar XML-RPC si no se utiliza (disable-xmlrpc plugin o regla nginx)."
+                )
+            resultado.plugin_findings.append({
+                "type":    "surface",
+                "cve":     "WP-XMLRPC-001",
+                "severity": severidad,
+                "cvss":    7.5 if severidad == "HIGH" else 5.3,
+                "description": descripcion,
+                "methods": resultado.xmlrpc_methods,
+                "high_risk_methods": metodos_expuestos_ar,
+                "remediation": "Añadir `add_filter('xmlrpc_enabled', '__return_false');` en functions.php o bloquear /xmlrpc.php en nginx/Apache.",
+            })
+
+        if resultado.rest_api_exposed and getattr(self.args, "check_xmlrpc", True):
+            # /wp-json/wp/v2/users devuelve usuarios — enumeración directa
+            resultado.plugin_findings.append({
+                "type":      "surface",
+                "cve":       "WP-REST-USER-ENUM-001",
+                "severity":  "HIGH",
+                "cvss":      7.5,
+                "description": (
+                    "El endpoint /wp-json/wp/v2/users devuelve la lista de usuarios "
+                    "de WordPress sin autenticación. Permite enumerar usernames "
+                    "(incluyendo administradores) para ataques de fuerza bruta dirigidos "
+                    "o credential stuffing. CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N."
+                ),
+                "remediation": "Añadir `add_filter('rest_endpoints', function($e){ unset($e[\"/wp/v2/users\"]); return $e; });` o actualizar a WP ≥ 5.5 y revisar la política de roles.",
+            })
+        elif resultado.rest_api_base_accessible and getattr(self.args, "check_xmlrpc", True):
+            # La API REST existe pero /users está protegido — hallazgo informativo
+            resultado.plugin_findings.append({
+                "type":      "surface",
+                "cve":       "WP-REST-API-ENABLED",
+                "severity":  "INFO",
+                "cvss":      0.0,
+                "description": (
+                    "La API REST de WordPress está habilitada (/wp-json/wp/v2/ accesible) "
+                    "pero el endpoint /users devuelve error o está protegido. "
+                    "Configuración correcta: los usuarios no son enumerables sin autenticación."
+                ),
+                "remediation": "Sin acción necesaria. Verificar periódicamente que /wp-json/wp/v2/users siga protegido.",
+            })
 
         # ── Fase 3: Fingerprinting de plugins y temas ─────────────────────────
         fingerprinter = PluginFingerprinter(session, self.args.timeout)
@@ -2282,6 +2397,10 @@ def main():
                         help="Activar test de subida canario en endpoints confirmados (requiere autorización)")
     parser.add_argument("--force",             action="store_true",
                         help="Auditar aunque WordPress no sea detectado")
+    parser.add_argument("--check-xmlrpc",     action="store_true", dest="check_xmlrpc", default=True,
+                        help="Probar XML-RPC y enumeración de usuarios REST API (activado por defecto)")
+    parser.add_argument("--no-check-xmlrpc",  action="store_false", dest="check_xmlrpc",
+                        help="Desactivar las pruebas de XML-RPC y enumeración REST API")
     parser.add_argument("-o", "--output",      metavar="FICHERO",
                         help="Ruta del informe JSON de salida")
     parser.add_argument("--html",              metavar="FICHERO",
@@ -2339,7 +2458,7 @@ def main():
     # ── Informe unificado VSL (cliente) ───────────────────────────────────────
     if getattr(args, "report_html", None) or getattr(args, "report_pdf", None):
         from vampsec_report import VampSecReport, meta_from_args
-        meta   = meta_from_args(args, tool="vamp-wp2shell-audit", version="1.0")
+        meta   = meta_from_args(args, tool="vamp-wp2shell-audit", version="1.2")
         report = VampSecReport(meta=meta, findings=_findings_vsl(resultados))
         if args.report_html:
             report.to_html_client(args.report_html)
