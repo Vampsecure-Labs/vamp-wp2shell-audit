@@ -97,7 +97,7 @@ __   ___   __  __ ___  ___ ___ ___ _   _ ___ ___ _      _   ___ ___
  \ V / _ \| |\/| |  _/\__ \ _| (__| |_| |   / _|| |__ / _ \| _ \__ \
   \_/_/ \_\_|  |_|_|  |___/___\___|\___/|_|_\___|____/_/ \_\___/___/
   by Antonio Hernandez "Belky" — VampSecure Studios
-  vamp-wp2shell-audit v1.0 · WordPress Upload Vector Auditor
+  vamp-wp2shell-audit v1.1 · WordPress Upload Vector Auditor
   ────────────────────────────────────────────────────────────────────────
   USO EXCLUSIVO EN AUDITORÍAS AUTORIZADAS · El uso no autorizado es ilegal
 """
@@ -271,6 +271,135 @@ PLUGIN_VULN_DB: Dict = {
         "cwe": "CWE-89",
         "secondary_vector": "sqli",
     }],
+    # ── Advanced Custom Fields (ACF / ACF Pro) ──────────────────────────────
+    "advanced-custom-fields": [
+        {
+            "cve": "CVE-2023-30777",
+            "description": "ACF < 6.1.6 — XSS reflejado en el campo de búsqueda del administrador; CVSS 6.1 MEDIUM",
+            "cvss": 6.1, "severity": "MEDIUM", "auth_required": True,
+            "affected": {"<": "6.1.6"},
+            "upload_endpoint": None,
+            "mime_bypass": [],
+            "cwe": "CWE-79",
+        },
+        {
+            "cve": "CVE-2023-40004",
+            "description": "ACF < 6.2.0 — CSRF que permite modificar configuraciones del plugin sin autenticación válida; CVSS 5.4 MEDIUM",
+            "cvss": 5.4, "severity": "MEDIUM", "auth_required": False,
+            "affected": {"<": "6.2.0"},
+            "upload_endpoint": None,
+            "mime_bypass": [],
+            "cwe": "CWE-352",
+        },
+    ],
+    "acf": [
+        {
+            "cve": "CVE-2023-30777",
+            "description": "ACF < 6.1.6 — XSS reflejado en el campo de búsqueda del administrador; CVSS 6.1 MEDIUM",
+            "cvss": 6.1, "severity": "MEDIUM", "auth_required": True,
+            "affected": {"<": "6.1.6"},
+            "upload_endpoint": None,
+            "mime_bypass": [],
+            "cwe": "CWE-79",
+        },
+    ],
+    "acf-pro": [
+        {
+            "cve": "CVE-2023-30777",
+            "description": "ACF Pro < 6.1.6 — XSS reflejado en el campo de búsqueda del administrador; CVSS 6.1 MEDIUM",
+            "cvss": 6.1, "severity": "MEDIUM", "auth_required": True,
+            "affected": {"<": "6.1.6"},
+            "upload_endpoint": None,
+            "mime_bypass": [],
+            "cwe": "CWE-79",
+        },
+    ],
+    # ── Yoast SEO ──────────────────────────────────────────────────────────
+    "wordpress-seo": [
+        {
+            "cve": "CVE-2023-32121",
+            "description": "Yoast SEO < 20.5 — XSS almacenado que permite inyectar scripts maliciosos en páginas indexadas; CVSS 5.4 MEDIUM",
+            "cvss": 5.4, "severity": "MEDIUM", "auth_required": True,
+            "affected": {"<": "20.5"},
+            "upload_endpoint": None,
+            "mime_bypass": [],
+            "cwe": "CWE-79",
+        },
+        {
+            "cve": "CVE-2021-25118",
+            "description": "Yoast SEO < 16.7 — divulgación de rutas del servidor (path disclosure) mediante respuestas de error del plugin; CVSS 5.3 MEDIUM",
+            "cvss": 5.3, "severity": "MEDIUM", "auth_required": False,
+            "affected": {"<": "16.7"},
+            "upload_endpoint": None,
+            "mime_bypass": [],
+            "cwe": "CWE-209",
+        },
+    ],
+    "wordpress-seo-premium": [
+        {
+            "cve": "CVE-2023-32121",
+            "description": "Yoast SEO Premium < 20.5 — XSS almacenado; CVSS 5.4 MEDIUM",
+            "cvss": 5.4, "severity": "MEDIUM", "auth_required": True,
+            "affected": {"<": "20.5"},
+            "upload_endpoint": None,
+            "mime_bypass": [],
+            "cwe": "CWE-79",
+        },
+    ],
+    # ── Rank Math SEO ──────────────────────────────────────────────────────
+    "seo-by-rank-math": [
+        {
+            "cve": "CVE-2023-32600",
+            "description": "Rank Math SEO < 1.0.119 — XSS almacenado que permite inyectar scripts en metadatos SEO; CVSS 5.4 MEDIUM",
+            "cvss": 5.4, "severity": "MEDIUM", "auth_required": True,
+            "affected": {"<": "1.0.119"},
+            "upload_endpoint": None,
+            "mime_bypass": [],
+            "cwe": "CWE-79",
+        },
+        {
+            "cve": "CVE-2021-24277",
+            "description": "Rank Math SEO < 1.0.76 — escalada de privilegios autenticada (suscriptor+) que permite elevar rol a administrador; CVSS 8.8 HIGH",
+            "cvss": 8.8, "severity": "HIGH", "auth_required": True,
+            "affected": {"<": "1.0.76"},
+            "upload_endpoint": "/wp-admin/admin-ajax.php",
+            "mime_bypass": [],
+            "cwe": "CWE-269",
+            "note": "Un suscriptor puede llamar al endpoint AJAX del plugin para asignarse el rol de administrador",
+        },
+    ],
+    # ── WooCommerce ────────────────────────────────────────────────────────
+    "woocommerce": [
+        {
+            "cve": "CVE-2021-32789",
+            "description": "WooCommerce < 5.5.1 — inyección SQL no autenticada en el endpoint de búsqueda de pedidos; CVSS 9.8 CRITICAL",
+            "cvss": 9.8, "severity": "CRITICAL", "auth_required": False,
+            "affected": {"<": "5.5.1"},
+            "upload_endpoint": None,
+            "mime_bypass": [],
+            "cwe": "CWE-89",
+            "secondary_vector": "sqli",
+        },
+        {
+            "cve": "CVE-2023-28121",
+            "description": "WooCommerce Payments < 5.6.2 — bypass de autenticación no autenticado que permite elevar privilegios a administrador; CVSS 9.8 CRITICAL",
+            "cvss": 9.8, "severity": "CRITICAL", "auth_required": False,
+            "affected": {"<": "5.6.2"},
+            "upload_endpoint": "/wp-json/wc/store/checkout",
+            "mime_bypass": [],
+            "cwe": "CWE-288",
+            "note": "Activamente explotado; permite subir webshells mediante la API de medios de WordPress tras escalar privilegios",
+        },
+        {
+            "cve": "CVE-2022-3590",
+            "description": "WooCommerce < 7.1.0 — XSS reflejado en parámetros de búsqueda del catálogo; CVSS 6.1 MEDIUM",
+            "cvss": 6.1, "severity": "MEDIUM", "auth_required": False,
+            "affected": {"<": "7.1.0"},
+            "upload_endpoint": None,
+            "mime_bypass": [],
+            "cwe": "CWE-79",
+        },
+    ],
 }
 
 # Base de datos de vulnerabilidades de temas WordPress
@@ -1439,7 +1568,7 @@ class ReportGenerator:
         """
         datos = {
             "tool": "vamp-wp2shell-audit",
-            "version": "1.0",
+            "version": "1.1",
             "generated": datetime.now(timezone.utc).isoformat(),
             "summary": {
                 "objetivos": len(results),
