@@ -66,27 +66,27 @@ AUTORÍA
   © VampSecure Studios — VampSecure Labs Security Research Division
   Todos los derechos reservados. Uso exclusivo en entornos autorizados.
 """
+from __future__ import annotations
 
-import asyncio
-import aiohttp
 import argparse
+import asyncio
 import hashlib
-import json
 import ipaddress
-import sys
+import json
 import re
+import sys
 import uuid
-from pathlib import Path
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from dataclasses import dataclass, field, asdict
-from typing import Optional, List, Dict, Tuple
-from urllib.parse import urlparse, urljoin
+from pathlib import Path
+from urllib.parse import urljoin, urlparse
 
-from rich.console import Console
-from rich.table import Table
-from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
+import aiohttp
 from rich import box
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
+from rich.table import Table
 
 console = Console()
 
@@ -118,7 +118,7 @@ BANNER = r"""
 #   secondary_vector: Vector secundario si aplica (ej. 'sqli')
 #   note            : Nota adicional sobre el vector de explotación
 # =============================================================================
-PLUGIN_VULN_DB: Dict = {
+PLUGIN_VULN_DB: dict = {
     "wp-file-manager": [{
         "cve": "CVE-2020-25213",
         "description": "WP File Manager — subida arbitraria de ficheros no autenticada que deriva en RCE",
@@ -214,7 +214,7 @@ PLUGIN_VULN_DB: Dict = {
 }
 
 # Base de datos de vulnerabilidades de temas WordPress
-THEME_VULN_DB: Dict = {
+THEME_VULN_DB: dict = {
     "jupiter": [{
         "cve": "CVE-2022-1654",
         "description": "Jupiter Theme — eliminación arbitraria de ficheros y RCE autenticado",
@@ -236,10 +236,10 @@ THEME_VULN_DB: Dict = {
 # Patrones regex para extraer la versión de WordPress del HTML
 # Se prueban en orden de fiabilidad — el primero que hace match gana
 WP_VERSION_RE = [
-    re.compile(r'<meta\s+name=["\']generator["\'][^>]*content=["\']WordPress\s+([\d.]+)', re.I),
-    re.compile(r'wp-includes/css/[^?]+\?ver=([\d.]+)', re.I),
-    re.compile(r'wp-content/themes/[^/]+/style\.css\?ver=([\d.]+)', re.I),
-    re.compile(r'"generator"\s*:\s*"WordPress\s+([\d.]+)"', re.I),
+    re.compile(r'<meta\s+name=["\']generator["\'][^>]*content=["\']WordPress\s+([\d.]+)', re.IGNORECASE),
+    re.compile(r'wp-includes/css/[^?]+\?ver=([\d.]+)', re.IGNORECASE),
+    re.compile(r'wp-content/themes/[^/]+/style\.css\?ver=([\d.]+)', re.IGNORECASE),
+    re.compile(r'"generator"\s*:\s*"WordPress\s+([\d.]+)"', re.IGNORECASE),
 ]
 
 
@@ -263,10 +263,10 @@ class ResultadoCanario:
     """
     intentado: bool
     nombre_fichero: str
-    url_subida: Optional[str]
+    url_subida: str | None
     accesible: bool
     eliminado: bool
-    evidencia: Optional[str]
+    evidencia: str | None
 
 
 @dataclass
@@ -297,20 +297,20 @@ class ScanResult:
     target: str
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     is_wordpress: bool = False
-    wp_version: Optional[str] = None
+    wp_version: str | None = None
     xmlrpc_enabled: bool = False
     rest_api_exposed: bool = False
     upload_dir_exposed: bool = False
     debug_mode: bool = False
-    installed_plugins: List[str] = field(default_factory=list)
-    installed_themes: List[str] = field(default_factory=list)
-    plugin_findings: List[Dict] = field(default_factory=list)
-    theme_findings: List[Dict] = field(default_factory=list)
-    sqli_vectors: List[Dict] = field(default_factory=list)
-    canary: Optional[Dict] = None
+    installed_plugins: list[str] = field(default_factory=list)
+    installed_themes: list[str] = field(default_factory=list)
+    plugin_findings: list[dict] = field(default_factory=list)
+    theme_findings: list[dict] = field(default_factory=list)
+    sqli_vectors: list[dict] = field(default_factory=list)
+    canary: dict | None = None
     risk_score: float = 0.0
     risk_level: str = "UNKNOWN"
-    error: Optional[str] = None
+    error: str | None = None
 
 
 # =============================================================================
@@ -332,7 +332,7 @@ class ScopeValidator:
     (el auditor asume plena responsabilidad sobre el targeting).
     """
 
-    def __init__(self, scope_file: Optional[str] = None):
+    def __init__(self, scope_file: str | None = None):
         self.entries: set = set()
         self.active = scope_file is not None
         if scope_file:
@@ -418,7 +418,7 @@ class WPDetector:
     ]
 
     @classmethod
-    def detect(cls, contenido: str, cabeceras: Dict) -> Tuple[bool, Optional[str]]:
+    def detect(cls, contenido: str, cabeceras: dict) -> tuple[bool, str | None]:
         """
         Detecta WordPress y extrae la versión del HTML y las cabeceras.
 
@@ -484,7 +484,7 @@ class PluginFingerprinter:
         self.session = session
         self.to = aiohttp.ClientTimeout(total=timeout)
 
-    async def enumerar_plugins(self, url_base: str, slugs: List[str]) -> List[Tuple[str, Optional[str]]]:
+    async def enumerar_plugins(self, url_base: str, slugs: list[str]) -> list[tuple[str, str | None]]:
         """
         Sondea los ficheros readme de cada slug y devuelve los detectados con versión.
 
@@ -497,7 +497,7 @@ class PluginFingerprinter:
         -------
         List[Tuple[str, Optional[str]]]  — [(slug, versión_o_None), ...]
         """
-        async def sondear(slug: str) -> Optional[Tuple[str, Optional[str]]]:
+        async def sondear(slug: str) -> tuple[str, str | None] | None:
             for ruta in (
                 f"/wp-content/plugins/{slug}/readme.txt",
                 f"/wp-content/plugins/{slug}/readme.md",
@@ -522,7 +522,7 @@ class PluginFingerprinter:
 
         return [r for r in resultados if isinstance(r, tuple) and r is not None]
 
-    async def enumerar_temas(self, url_base: str, slugs: List[str]) -> List[Tuple[str, Optional[str]]]:
+    async def enumerar_temas(self, url_base: str, slugs: list[str]) -> list[tuple[str, str | None]]:
         """
         Sondea el style.css de cada tema y devuelve los detectados con versión.
 
@@ -535,7 +535,7 @@ class PluginFingerprinter:
         -------
         List[Tuple[str, Optional[str]]]  — [(slug, versión_o_None), ...]
         """
-        async def sondear(slug: str) -> Optional[Tuple[str, Optional[str]]]:
+        async def sondear(slug: str) -> tuple[str, str | None] | None:
             try:
                 async with self.session.get(
                     f"{url_base}/wp-content/themes/{slug}/style.css",
@@ -545,7 +545,7 @@ class PluginFingerprinter:
                 ) as r:
                     if r.status == 200:
                         cuerpo = await r.text(errors="replace")
-                        ver_m = re.search(r'Version:\s*([\d.]+)', cuerpo, re.I)
+                        ver_m = re.search(r'Version:\s*([\d.]+)', cuerpo, re.IGNORECASE)
                         return (slug, ver_m.group(1) if ver_m else None)
             except Exception:
                 pass
@@ -557,7 +557,7 @@ class PluginFingerprinter:
         return [r for r in resultados if isinstance(r, tuple) and r is not None]
 
     @staticmethod
-    def _extraer_version(readme: str) -> Optional[str]:
+    def _extraer_version(readme: str) -> str | None:
         """
         Extrae la versión del contenido de un readme.txt de WordPress.
 
@@ -571,7 +571,7 @@ class PluginFingerprinter:
             r'Version:\s*([\d.]+)',
             r'==\s*Changelog\s*==.*?=\s*([\d.]+)',
         ):
-            m = re.search(patron, readme, re.I | re.S)
+            m = re.search(patron, readme, re.IGNORECASE | re.DOTALL)
             if m:
                 return m.group(1)
         return None
@@ -592,7 +592,7 @@ class VulnMapper:
     """
 
     @staticmethod
-    def _parsear_version(v: str) -> Tuple[int, ...]:
+    def _parsear_version(v: str) -> tuple[int, ...]:
         """
         Convierte 'X.Y.Z' en tupla comparable (X, Y, Z).
 
@@ -605,7 +605,7 @@ class VulnMapper:
             return (0,)
 
     @classmethod
-    def mapear(cls, slug: str, version: Optional[str], db: Dict) -> List[Dict]:
+    def mapear(cls, slug: str, version: str | None, db: dict) -> list[dict]:
         """
         Busca vulnerabilidades para un slug dado con su versión detectada.
 
@@ -638,10 +638,7 @@ class VulnMapper:
                 # Plugin detectado pero versión no legible — riesgo potencial
                 resultados.append({**vuln, "version_confirmed": False, "detected_version": None})
 
-            elif limite_menor and cls._parsear_version(version) < cls._parsear_version(limite_menor):
-                resultados.append({**vuln, "version_confirmed": True, "detected_version": version})
-
-            elif limite_menorigual and cls._parsear_version(version) <= cls._parsear_version(limite_menorigual):
+            elif limite_menor and cls._parsear_version(version) < cls._parsear_version(limite_menor) or limite_menorigual and cls._parsear_version(version) <= cls._parsear_version(limite_menorigual):
                 resultados.append({**vuln, "version_confirmed": True, "detected_version": version})
 
         return resultados
@@ -754,7 +751,7 @@ class UploadChecker:
         except Exception:
             return False
 
-    async def sondear_endpoint_plugin(self, url_base: str, endpoint: str) -> Dict:
+    async def sondear_endpoint_plugin(self, url_base: str, endpoint: str) -> dict:
         """
         Verifica si un endpoint de subida de un plugin vulnerable está accesible.
 
@@ -789,7 +786,7 @@ class UploadChecker:
         except Exception as e:
             return {"endpoint": endpoint, "status": None, "accessible": False, "error": str(e)[:60]}
 
-    async def detectar_sqli_vectors(self, url_base: str) -> List[Dict]:
+    async def detectar_sqli_vectors(self, url_base: str) -> list[dict]:
         """
         Detecta vectores de inyección SQL basados en errores mediante sondas
         pasivas en parámetros GET públicos de WordPress.
@@ -812,7 +809,7 @@ class UploadChecker:
         -------
         List[Dict]  — Lista de vectores SQLi encontrados
         """
-        vectores: List[Dict] = []
+        vectores: list[dict] = []
 
         # Patrones de error de bases de datos populares (MySQL, MSSQL, Oracle)
         patrones_error = [
@@ -836,7 +833,7 @@ class UploadChecker:
                 async with self.session.get(url, timeout=self.to, ssl=False) as r:
                     cuerpo = await r.text(errors="replace")
                     for patron in patrones_error:
-                        if re.search(patron, cuerpo, re.I):
+                        if re.search(patron, cuerpo, re.IGNORECASE):
                             vectores.append({
                                 "url": url,
                                 "patron": patron,
@@ -1062,7 +1059,7 @@ class ReportGenerator:
     """
 
     @staticmethod
-    def to_json(results: List[ScanResult], ruta: str):
+    def to_json(results: list[ScanResult], ruta: str):
         """
         Serializa todos los resultados a JSON con un bloque de resumen agregado.
 
@@ -1098,7 +1095,7 @@ class ReportGenerator:
         Path(ruta).write_text(json.dumps(datos, indent=2, default=str), encoding="utf-8")
 
     @staticmethod
-    def to_html(results: List[ScanResult], ruta: str):
+    def to_html(results: list[ScanResult], ruta: str):
         """
         Genera un informe HTML standalone con tema oscuro magenta/púrpura.
 
@@ -1385,7 +1382,7 @@ class WPScanner:
                 return nivel
         return "INFO"
 
-    async def run(self, objetivos: List[str]) -> List[ScanResult]:
+    async def run(self, objetivos: list[str]) -> list[ScanResult]:
         """
         Ejecuta la auditoría completa del lote de forma asíncrona con control
         de concurrencia mediante Semaphore.
@@ -1400,7 +1397,7 @@ class WPScanner:
         """
         semaforo = asyncio.Semaphore(self.args.concurrency)
         conector = aiohttp.TCPConnector(ssl=False, limit=self.args.concurrency * 2)
-        resultados: List[ScanResult] = []
+        resultados: list[ScanResult] = []
 
         async with aiohttp.ClientSession(connector=conector) as session:
 
@@ -1441,7 +1438,7 @@ COLORES_RIESGO = {
 }
 
 
-def mostrar_tabla_resultados(results: List[ScanResult]):
+def mostrar_tabla_resultados(results: list[ScanResult]):
     """
     Imprime la tabla resumen de auditoría WordPress con Rich.
 
@@ -1488,7 +1485,7 @@ def mostrar_tabla_resultados(results: List[ScanResult]):
     console.print(tabla)
 
 
-def mostrar_paneles_detalle(results: List[ScanResult]):
+def mostrar_paneles_detalle(results: list[ScanResult]):
     """
     Para cada objetivo con hallazgos de severidad HIGH o superior, imprime
     un panel de detalle con los CVEs, técnicas de bypass MIME, estado del
@@ -1567,7 +1564,7 @@ def mostrar_paneles_detalle(results: List[ScanResult]):
 # PUNTO DE ENTRADA
 # =============================================================================
 
-def cargar_objetivos(args) -> List[str]:
+def cargar_objetivos(args) -> list[str]:
     """
     Combina los objetivos de --target y --input en una lista deduplicada,
     preservando el orden de primera aparición.

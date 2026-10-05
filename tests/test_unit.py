@@ -6,22 +6,20 @@ Cubre: WPDetector.detect, WP_VERSION_RE, VulnMapper.mapear,
        detección de indicadores, versiones en rango afectado.
 """
 
-import sys
 import os
-from unittest.mock import MagicMock, patch
+import sys
 
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from vamp_wp2shell_audit import (
-    WPDetector,
-    VulnMapper,
     PLUGIN_VULN_DB,
     THEME_VULN_DB,
     WP_VERSION_RE,
+    VulnMapper,
+    WPDetector,
 )
-
 
 # ---------------------------------------------------------------------------
 # Tests de WPDetector.detect
@@ -32,7 +30,7 @@ class TestWPDetector:
 
     def test_detecta_wordpress_por_meta_generator(self, html_wordpress_581):
         """El tag meta generator de WordPress debe ser suficiente para detectarlo."""
-        es_wp, version = WPDetector.detect(html_wordpress_581, {})
+        es_wp, _version = WPDetector.detect(html_wordpress_581, {})
         assert es_wp is True
 
     def test_extrae_version_de_meta_generator(self, html_wordpress_581):
@@ -203,7 +201,7 @@ class TestPluginVulnDBIntegridad:
     def test_todos_los_entries_tienen_severity(self):
         """Cada entrada debe tener severity válida."""
         niveles_validos = {"CRITICAL", "HIGH", "MEDIUM", "LOW"}
-        for slug, vulns in PLUGIN_VULN_DB.items():
+        for vulns in PLUGIN_VULN_DB.values():
             for vuln in vulns:
                 assert vuln.get("severity") in niveles_validos
 

@@ -5,23 +5,16 @@ Usa aiohttp mock para simular respuestas HTTP de un sitio WordPress.
 Verifica detección end-to-end: WP detect → versión → plugins → CVE mapping.
 """
 
-import sys
 import os
-import asyncio
-from unittest.mock import MagicMock, AsyncMock, patch
-
-import pytest
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from vamp_wp2shell_audit import (
-    WPDetector,
-    VulnMapper,
-    ScanResult,
     PLUGIN_VULN_DB,
-    THEME_VULN_DB,
+    VulnMapper,
+    WPDetector,
 )
-
 
 # ---------------------------------------------------------------------------
 # Test 1: Flujo detect → versión → mapeo CVE end-to-end

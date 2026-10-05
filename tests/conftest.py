@@ -4,10 +4,9 @@ Fixtures compartidos para los tests de vamp-wp2shell-audit.
 Proporciona HTML de WordPress, cabeceras simuladas y ScanResult de prueba.
 """
 
-import sys
 import os
+import sys
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, AsyncMock
 
 import pytest
 
@@ -15,12 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from vamp_wp2shell_audit import (
     ScanResult,
-    WPDetector,
-    VulnMapper,
-    PLUGIN_VULN_DB,
-    THEME_VULN_DB,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures de HTML WordPress
