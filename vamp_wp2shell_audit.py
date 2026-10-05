@@ -92,14 +92,14 @@ console = Console()
 
 # Cabecera ASCII impresa al inicio de cada ejecución
 BANNER = r"""
-__   ___   __  __ ___  ___ ___ ___ _   _ ___ ___ _      _   ___ ___ 
-\ \ / /_\ |  \/  | _ \/ __| __/ __| | | | _ \ __| |    /_\ | _ ) __|
- \ V / _ \| |\/| |  _/\__ \ _| (__| |_| |   / _|| |__ / _ \| _ \__ \
-  \_/_/ \_\_|  |_|_|  |___/___\___|\___/|_|_\___|____/_/ \_\___/___/
-  by Antonio Hernandez "Belky" — VampSecure Studios
-  vamp-wp2shell-audit v1.2 · WordPress Upload Vector Auditor
-  ────────────────────────────────────────────────────────────────────────
-  USO EXCLUSIVO EN AUDITORÍAS AUTORIZADAS · El uso no autorizado es ilegal
+  ____   ____    _    __  __ ____  _____ ____ _   _ ____  _____   _        _    ____ ____
+ \ \ / / _  |  / \  |  \/  |  _ \/ ____/ ___| | | |  _ \| ____| | |      / \  | __ ) ___|
+  \ V / (_| | / _ \ | |\/| | |_) \___ \| |___| | | | |_) |  _|   | |     / _ \ |  _ \___ \
+   | |  \__, |/ ___ \| |  | |  __/ ___) |___  | |_| |  _ <| |___  | |___ / ___ \| |_) |__) |
+   |_|     /_/_/   \_|_|  |_|_|   |____/\____|\___/|_| \_|_____| |_____/_/   \_|____/____/
+     by VampSecure Studios · vamp-wp2shell-audit v1.0 · WordPress Upload Vector Auditor
+     ──────────────────────────────────────────────────────────────────────────────────────
+     USO EXCLUSIVO EN AUDITORÍAS AUTORIZADAS · El uso no autorizado es ilegal
 """
 
 # =============================================================================
@@ -211,195 +211,6 @@ PLUGIN_VULN_DB: Dict = {
         "mime_bypass": [],
         "cwe": "CWE-22",
     }],
-    "litespeed-cache": [{
-        "cve": "CVE-2024-28000",
-        "description": "LiteSpeed Cache — escalada de privilegios a administrador sin autenticación mediante manipulación del cookie de simulación de usuario (hash débil predecible); CVSS 9.8",
-        "cvss": 9.8, "severity": "CRITICAL", "auth_required": False,
-        "affected": {"<=": "6.3.0.1"},
-        "upload_endpoint": "/wp-admin/admin-ajax.php",
-        "mime_bypass": [],
-        "cwe": "CWE-288",
-        "note": "La escalada a admin permite posterior subida de webshell via WP media upload",
-    }],
-    "wp-automatic": [{
-        "cve": "CVE-2024-27956",
-        "description": "WP Automatic Plugin — inyección SQL no autenticada en el endpoint de importación de posts; CVSS 9.9; permite extraer credenciales y crear cuentas admin",
-        "cvss": 9.9, "severity": "CRITICAL", "auth_required": False,
-        "affected": {"<": "3.92.1"},
-        "upload_endpoint": "/wp-content/plugins/wp-automatic/inc/csv.php",
-        "mime_bypass": [],
-        "cwe": "CWE-89",
-        "secondary_vector": "sqli",
-        "note": "Explotación masiva activa documentada en abril 2024",
-    }],
-    "give": [{
-        "cve": "CVE-2024-5932",
-        "description": "GiveWP — inyección de objetos PHP no autenticada a través del parámetro 'give_payment_mode'; CVSS 10.0; permite RCE o borrado de ficheros arbitrarios",
-        "cvss": 10.0, "severity": "CRITICAL", "auth_required": False,
-        "affected": {"<": "3.14.2"},
-        "upload_endpoint": None,
-        "mime_bypass": [],
-        "cwe": "CWE-502",
-        "note": "Gadget chain disponible en entornos con Symfony/PHPUnit como dependencias",
-    }],
-    "really-simple-ssl": [{
-        "cve": "CVE-2024-10924",
-        "description": "Really Simple Security (SSL) — bypass de autenticación de doble factor mediante manipulación de parámetros en el endpoint de verificación; afecta a +4M instalaciones; CVSS 9.8",
-        "cvss": 9.8, "severity": "CRITICAL", "auth_required": False,
-        "affected": {"<": "9.1.2"},
-        "upload_endpoint": "/wp-admin/admin-ajax.php",
-        "mime_bypass": [],
-        "cwe": "CWE-287",
-        "note": "Activamente explotado; Wordfence emitió advisory de emergencia en noviembre 2024",
-    }],
-    "elementor": [{
-        "cve": "CVE-2024-9234",
-        "description": "Elementor Pro — subida arbitraria de ficheros autenticada (suscriptor+) que puede derivar en RCE; CVSS 8.8",
-        "cvss": 8.8, "severity": "HIGH", "auth_required": True,
-        "affected": {"<": "3.24.0"},
-        "upload_endpoint": "/wp-admin/admin-ajax.php",
-        "mime_bypass": ["PHP disfrazado como imagen"],
-        "cwe": "CWE-434",
-    }],
-    "the-events-calendar": [{
-        "cve": "CVE-2024-8275",
-        "description": "The Events Calendar — inyección SQL no autenticada en el endpoint de búsqueda de eventos; CVSS 9.8",
-        "cvss": 9.8, "severity": "CRITICAL", "auth_required": False,
-        "affected": {"<": "6.6.4"},
-        "upload_endpoint": None,
-        "mime_bypass": [],
-        "cwe": "CWE-89",
-        "secondary_vector": "sqli",
-    }],
-    # ── Advanced Custom Fields (ACF / ACF Pro) ──────────────────────────────
-    "advanced-custom-fields": [
-        {
-            "cve": "CVE-2023-30777",
-            "description": "ACF < 6.1.6 — XSS reflejado en el campo de búsqueda del administrador; CVSS 6.1 MEDIUM",
-            "cvss": 6.1, "severity": "MEDIUM", "auth_required": True,
-            "affected": {"<": "6.1.6"},
-            "upload_endpoint": None,
-            "mime_bypass": [],
-            "cwe": "CWE-79",
-        },
-        {
-            "cve": "CVE-2023-40004",
-            "description": "ACF < 6.2.0 — CSRF que permite modificar configuraciones del plugin sin autenticación válida; CVSS 5.4 MEDIUM",
-            "cvss": 5.4, "severity": "MEDIUM", "auth_required": False,
-            "affected": {"<": "6.2.0"},
-            "upload_endpoint": None,
-            "mime_bypass": [],
-            "cwe": "CWE-352",
-        },
-    ],
-    "acf": [
-        {
-            "cve": "CVE-2023-30777",
-            "description": "ACF < 6.1.6 — XSS reflejado en el campo de búsqueda del administrador; CVSS 6.1 MEDIUM",
-            "cvss": 6.1, "severity": "MEDIUM", "auth_required": True,
-            "affected": {"<": "6.1.6"},
-            "upload_endpoint": None,
-            "mime_bypass": [],
-            "cwe": "CWE-79",
-        },
-    ],
-    "acf-pro": [
-        {
-            "cve": "CVE-2023-30777",
-            "description": "ACF Pro < 6.1.6 — XSS reflejado en el campo de búsqueda del administrador; CVSS 6.1 MEDIUM",
-            "cvss": 6.1, "severity": "MEDIUM", "auth_required": True,
-            "affected": {"<": "6.1.6"},
-            "upload_endpoint": None,
-            "mime_bypass": [],
-            "cwe": "CWE-79",
-        },
-    ],
-    # ── Yoast SEO ──────────────────────────────────────────────────────────
-    "wordpress-seo": [
-        {
-            "cve": "CVE-2023-32121",
-            "description": "Yoast SEO < 20.5 — XSS almacenado que permite inyectar scripts maliciosos en páginas indexadas; CVSS 5.4 MEDIUM",
-            "cvss": 5.4, "severity": "MEDIUM", "auth_required": True,
-            "affected": {"<": "20.5"},
-            "upload_endpoint": None,
-            "mime_bypass": [],
-            "cwe": "CWE-79",
-        },
-        {
-            "cve": "CVE-2021-25118",
-            "description": "Yoast SEO < 16.7 — divulgación de rutas del servidor (path disclosure) mediante respuestas de error del plugin; CVSS 5.3 MEDIUM",
-            "cvss": 5.3, "severity": "MEDIUM", "auth_required": False,
-            "affected": {"<": "16.7"},
-            "upload_endpoint": None,
-            "mime_bypass": [],
-            "cwe": "CWE-209",
-        },
-    ],
-    "wordpress-seo-premium": [
-        {
-            "cve": "CVE-2023-32121",
-            "description": "Yoast SEO Premium < 20.5 — XSS almacenado; CVSS 5.4 MEDIUM",
-            "cvss": 5.4, "severity": "MEDIUM", "auth_required": True,
-            "affected": {"<": "20.5"},
-            "upload_endpoint": None,
-            "mime_bypass": [],
-            "cwe": "CWE-79",
-        },
-    ],
-    # ── Rank Math SEO ──────────────────────────────────────────────────────
-    "seo-by-rank-math": [
-        {
-            "cve": "CVE-2023-32600",
-            "description": "Rank Math SEO < 1.0.119 — XSS almacenado que permite inyectar scripts en metadatos SEO; CVSS 5.4 MEDIUM",
-            "cvss": 5.4, "severity": "MEDIUM", "auth_required": True,
-            "affected": {"<": "1.0.119"},
-            "upload_endpoint": None,
-            "mime_bypass": [],
-            "cwe": "CWE-79",
-        },
-        {
-            "cve": "CVE-2021-24277",
-            "description": "Rank Math SEO < 1.0.76 — escalada de privilegios autenticada (suscriptor+) que permite elevar rol a administrador; CVSS 8.8 HIGH",
-            "cvss": 8.8, "severity": "HIGH", "auth_required": True,
-            "affected": {"<": "1.0.76"},
-            "upload_endpoint": "/wp-admin/admin-ajax.php",
-            "mime_bypass": [],
-            "cwe": "CWE-269",
-            "note": "Un suscriptor puede llamar al endpoint AJAX del plugin para asignarse el rol de administrador",
-        },
-    ],
-    # ── WooCommerce ────────────────────────────────────────────────────────
-    "woocommerce": [
-        {
-            "cve": "CVE-2021-32789",
-            "description": "WooCommerce < 5.5.1 — inyección SQL no autenticada en el endpoint de búsqueda de pedidos; CVSS 9.8 CRITICAL",
-            "cvss": 9.8, "severity": "CRITICAL", "auth_required": False,
-            "affected": {"<": "5.5.1"},
-            "upload_endpoint": None,
-            "mime_bypass": [],
-            "cwe": "CWE-89",
-            "secondary_vector": "sqli",
-        },
-        {
-            "cve": "CVE-2023-28121",
-            "description": "WooCommerce Payments < 5.6.2 — bypass de autenticación no autenticado que permite elevar privilegios a administrador; CVSS 9.8 CRITICAL",
-            "cvss": 9.8, "severity": "CRITICAL", "auth_required": False,
-            "affected": {"<": "5.6.2"},
-            "upload_endpoint": "/wp-json/wc/store/checkout",
-            "mime_bypass": [],
-            "cwe": "CWE-288",
-            "note": "Activamente explotado; permite subir webshells mediante la API de medios de WordPress tras escalar privilegios",
-        },
-        {
-            "cve": "CVE-2022-3590",
-            "description": "WooCommerce < 7.1.0 — XSS reflejado en parámetros de búsqueda del catálogo; CVSS 6.1 MEDIUM",
-            "cvss": 6.1, "severity": "MEDIUM", "auth_required": False,
-            "affected": {"<": "7.1.0"},
-            "upload_endpoint": None,
-            "mime_bypass": [],
-            "cwe": "CWE-79",
-        },
-    ],
 }
 
 # Base de datos de vulnerabilidades de temas WordPress
@@ -500,14 +311,6 @@ class ScanResult:
     risk_score: float = 0.0
     risk_level: str = "UNKNOWN"
     error: Optional[str] = None
-    # Multi-CMS (Joomla / Drupal)
-    cms_type: str = ""                                     # "Joomla" | "Drupal" | ""
-    cms_version: Optional[str] = None
-    cms_findings: List[Dict] = field(default_factory=list)
-    # Hallazgos XML-RPC detallados: lista de métodos expuestos (vacía si XMLRPC deshabilitado)
-    xmlrpc_methods: List[str] = field(default_factory=list)
-    # True si /wp-json/wp/v2/ responde aunque /users esté protegido
-    rest_api_base_accessible: bool = False
 
 
 # =============================================================================
@@ -607,8 +410,8 @@ class WPDetector:
     4. Campo "generator" en JSON (API REST o feeds)
     """
 
-    # Indicadores de presencia de WordPress
-    SENALES = [
+    # Señales de presencia de WordPress
+    SENALES_WP = [
         "/wp-content/", "/wp-includes/", "wp-login.php",
         "WordPress", "woocommerce", "/wp-json/",
         "xmlrpc.php", "wp-admin",
@@ -632,7 +435,7 @@ class WPDetector:
         """
         # Limitar el análisis a los primeros 50 KB para evitar regex lentos en páginas enormes
         combinado = contenido[:50000] + str(cabeceras)
-        es_wp = any(ind.lower() in combinado.lower() for ind in cls.SENALES)
+        es_wp = any(ind.lower() in combinado.lower() for ind in cls.SENALES_WP)
 
         version = None
         for rx in WP_VERSION_RE:
@@ -642,308 +445,6 @@ class WPDetector:
                 break
 
         return es_wp, version
-
-
-# =============================================================================
-# SOPORTE MULTI-CMS — JOOMLA Y DRUPAL
-# =============================================================================
-
-class JoomlaDetector:
-    """
-    Detecta instalaciones Joomla de forma pasiva (HTML + cabeceras) y obtiene
-    la versión del core mediante una sonda ligera a la manifest XML pública.
-    """
-
-    SENALES = [
-        "Joomla!", "/components/com_", "/media/joomla_icon.ico",
-        "/media/com_joomla/", "/plugins/system/cache/",
-        "com_content", "option=com_",
-    ]
-    _RX_VERSION = re.compile(r'content=["\']Joomla!\s*-?\s*Open\s*Source\s*CMS\s*([\d.]+)', re.I)
-    _MANIFEST    = "/administrator/manifests/files/joomla.xml"
-
-    @classmethod
-    def detect_passive(cls, contenido: str, cabeceras: Dict) -> bool:
-        combinado = contenido[:50000] + str(cabeceras)
-        return any(ind.lower() in combinado.lower() for ind in cls.SENALES)
-
-    @classmethod
-    async def get_version(cls, session: "aiohttp.ClientSession", url_base: str, timeout) -> Optional[str]:
-        """Intenta leer la versión del core desde la manifest XML pública de Joomla."""
-        try:
-            manifest_url = url_base.rstrip("/") + cls._MANIFEST
-            async with session.get(manifest_url, timeout=timeout, ssl=False) as r:
-                if r.status == 200:
-                    text = await r.text(errors="replace")
-                    m = re.search(r"<version>([\d.]+)</version>", text)
-                    if m:
-                        return m.group(1)
-        except Exception:
-            pass
-        return None
-
-
-class JoomlaAuditor:
-    """
-    Sondea vectores de seguridad específicos de instalaciones Joomla.
-
-    Checks implementados
-    --------------------
-    · CVE-2023-23752 : Endpoint API sin autenticación expone configuración de BD
-    · Admin panel    : /administrator/ accesible sin autenticación (MEDIUM)
-    · Backups config : Ficheros de configuración de respaldo accesibles (CRITICAL)
-    · Debug mode     : Modo depuración activo en producción (MEDIUM)
-    """
-
-    _BACKUP_PATHS = [
-        "/configuration.php.bak", "/configuration.php.old",
-        "/configuration.php~", "/configuration.php.orig",
-        "/.configuration.php.swp",
-    ]
-
-    def __init__(self, session: "aiohttp.ClientSession") -> None:
-        self._s = session
-
-    async def run(self, url_base: str, timeout) -> List[Dict]:
-        """Ejecuta todos los checks de Joomla en paralelo y retorna la lista de hallazgos."""
-        hallazgos: List[Dict] = []
-
-        checks = await asyncio.gather(
-            self._check_cve_2023_23752(url_base, timeout),
-            self._check_admin_exposure(url_base, timeout),
-            self._check_config_backups(url_base, timeout),
-            return_exceptions=True,
-        )
-
-        for check in checks:
-            if isinstance(check, list):
-                hallazgos.extend(check)
-        return hallazgos
-
-    async def _check_cve_2023_23752(self, url_base: str, timeout) -> List[Dict]:
-        """
-        CVE-2023-23752 — API REST de Joomla! sin autenticación expone configuración
-        de base de datos (host, usuario, nombre, contraseña) en texto claro.
-        Afecta Joomla 4.0.0 – 4.2.7.
-        """
-        import json as _json
-        endpoint = url_base.rstrip("/") + "/api/index.php/v1/config/application?public=true"
-        try:
-            async with self._s.get(endpoint, timeout=timeout, ssl=False) as r:
-                if r.status == 200:
-                    ct = r.headers.get("Content-Type", "")
-                    if "json" in ct:
-                        body = await r.text(errors="replace")
-                        try:
-                            data = _json.loads(body)
-                        except Exception:
-                            return []
-                        # La respuesta vulnerable contiene atributos de configuración de BD
-                        if isinstance(data, dict) and "data" in data:
-                            attrs = {
-                                item.get("attributes", {}).get("name", ""): True
-                                for item in data["data"]
-                                if isinstance(item, dict)
-                            }
-                            if "db" in attrs or "dbhost" in attrs or "user" in attrs:
-                                return [{"cve": "CVE-2023-23752", "severity": "CRITICAL",
-                                    "description": "API sin auth expone configuración de BD (Joomla 4.0–4.2.7)",
-                                    "cvss": 7.5, "evidence": endpoint,
-                                    "remediation": "Actualizar a Joomla 4.2.8+ o 3.10.12+. "
-                                                   "Parche disponible en el canal oficial."}]
-        except Exception:
-            pass
-        return []
-
-    async def _check_admin_exposure(self, url_base: str, timeout) -> List[Dict]:
-        """Verifica si el panel de administración es accesible sin autenticación previa."""
-        try:
-            async with self._s.get(
-                url_base.rstrip("/") + "/administrator/index.php",
-                timeout=timeout, ssl=False, allow_redirects=True,
-            ) as r:
-                if r.status == 200:
-                    texto = await r.text(errors="replace")
-                    if "administrator" in texto.lower() and "joomla" in texto.lower():
-                        return [{"cve": None, "severity": "MEDIUM",
-                            "description": "Panel de administración Joomla accesible (sin auth previa)",
-                            "cvss": 5.3, "evidence": url_base + "/administrator/index.php",
-                            "remediation": "Restringir /administrator/ por IP o implementar "
-                                           "autenticación de doble factor. Considerar renombrar "
-                                           "el directorio admin (extensión AdminExile/RSFirewall)."}]
-        except Exception:
-            pass
-        return []
-
-    async def _check_config_backups(self, url_base: str, timeout) -> List[Dict]:
-        """Busca ficheros de configuración de respaldo que exponen credenciales de BD."""
-        hallazgos: List[Dict] = []
-        for path in self._BACKUP_PATHS:
-            try:
-                async with self._s.get(
-                    url_base.rstrip("/") + path, timeout=timeout, ssl=False
-                ) as r:
-                    if r.status == 200:
-                        texto = await r.text(errors="replace")
-                        if "JConfig" in texto or "public $db" in texto or "mysqli" in texto.lower():
-                            hallazgos.append({"cve": None, "severity": "CRITICAL",
-                                "description": f"Fichero de configuración Joomla accesible: {path}",
-                                "cvss": 9.1, "evidence": url_base + path,
-                                "remediation": "Eliminar inmediatamente todos los ficheros de "
-                                               "respaldo de configuración del servidor web. "
-                                               "Configurar el servidor para denegar acceso a *.bak/*.old."})
-            except Exception:
-                continue
-        return hallazgos
-
-
-class DrupalDetector:
-    """
-    Detecta instalaciones Drupal de forma pasiva (HTML + cabeceras) y obtiene
-    la versión del core desde el CHANGELOG.txt público cuando está disponible.
-    """
-
-    SENALES = [
-        "Drupal", "/sites/default/files/", "/sites/all/modules/",
-        "Drupal.settings", "/misc/drupal.js", "drupal.org",
-        "/core/misc/drupal.js", "X-Generator: Drupal",
-    ]
-    _RX_GENERATOR = re.compile(r'content=["\']Drupal\s*([\d.]+)', re.I)
-    _RX_CHANGELOG  = re.compile(r"Drupal\s*([\d.]+),\s*\d{4}-\d{2}-\d{2}", re.I)
-
-    @classmethod
-    def detect_passive(cls, contenido: str, cabeceras: Dict) -> bool:
-        combinado = contenido[:50000] + str(cabeceras)
-        return any(ind.lower() in combinado.lower() for ind in cls.SENALES)
-
-    @classmethod
-    async def get_version(cls, session: "aiohttp.ClientSession", url_base: str, timeout) -> Optional[str]:
-        """Intenta leer la versión del core desde CHANGELOG.txt (Drupal 6/7) o /core/ (8+)."""
-        for path in ("/core/CHANGELOG.txt", "/CHANGELOG.txt"):
-            try:
-                async with session.get(
-                    url_base.rstrip("/") + path, timeout=timeout, ssl=False
-                ) as r:
-                    if r.status == 200:
-                        text = await r.text(errors="replace")
-                        m = cls._RX_CHANGELOG.search(text)
-                        if m:
-                            return m.group(1)
-            except Exception:
-                continue
-        # Fallback: cabecera X-Generator
-        return None
-
-
-class DrupalAuditor:
-    """
-    Sondea vectores de seguridad específicos de instalaciones Drupal.
-
-    Checks implementados
-    --------------------
-    · CVE-2018-7600 : Drupalgeddon 2 — RCE sin autenticación (Drupal < 8.5.1)
-    · Exposed install.php  : Interfaz de instalación accesible (HIGH)
-    · Exposed update.php   : Interfaz de actualización accesible (HIGH)
-    · CHANGELOG.txt público: Expone versión exact (MEDIUM)
-    """
-
-    def __init__(self, session: "aiohttp.ClientSession") -> None:
-        self._s = session
-
-    async def run(self, url_base: str, timeout) -> List[Dict]:
-        hallazgos: List[Dict] = []
-        checks = await asyncio.gather(
-            self._check_drupalgeddon2(url_base, timeout),
-            self._check_install_update_php(url_base, timeout),
-            self._check_changelog_exposure(url_base, timeout),
-            return_exceptions=True,
-        )
-        for check in checks:
-            if isinstance(check, list):
-                hallazgos.extend(check)
-        return hallazgos
-
-    async def _check_drupalgeddon2(self, url_base: str, timeout) -> List[Dict]:
-        """
-        CVE-2018-7600 — Drupalgeddon 2: RCE sin autenticación a través de la API
-        de AJAX de formularios. La sonda comprueba si el endpoint vulnerable
-        responde con una estructura JSON esperada sin intentar ejecutar código.
-        """
-        endpoint = (
-            url_base.rstrip("/") +
-            "/user/register?element_parents=account/mail/%23value"
-            "&ajax_form=1&_wrapper_format=drupal_ajax"
-        )
-        try:
-            async with self._s.post(
-                endpoint, timeout=timeout, ssl=False,
-                data={"form_id": "user_register_form", "_drupal_ajax": "1"},
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            ) as r:
-                if r.status in (200, 422, 400):
-                    ct = r.headers.get("Content-Type", "")
-                    if "json" in ct:
-                        body = await r.text(errors="replace")
-                        # Respuesta vulnerable: array JSON con objetos {command, ...}
-                        if body.strip().startswith("[") and '"command"' in body:
-                            return [{"cve": "CVE-2018-7600", "severity": "CRITICAL",
-                                "description": "Drupalgeddon 2 — endpoint AJAX de formulario "
-                                               "responde con estructura JSON vulnerable (Drupal < 8.5.1)",
-                                "cvss": 9.8, "evidence": endpoint,
-                                "remediation": "Actualizar Drupal a 8.5.1+ (o 7.58+). "
-                                               "Aplicar parche SA-CORE-2018-002. "
-                                               "Deshabilitar el módulo AJAX si no se usa."}]
-        except Exception:
-            pass
-        return []
-
-    async def _check_install_update_php(self, url_base: str, timeout) -> List[Dict]:
-        """Detecta interfaces de instalación/actualización expuestas sin acceso restringido."""
-        hallazgos: List[Dict] = []
-        paths = [
-            ("/core/install.php", "Interfaz de instalación Drupal 8+ accesible sin restricción"),
-            ("/install.php",      "Interfaz de instalación Drupal 7 accesible sin restricción"),
-            ("/update.php",       "Interfaz de actualización Drupal accesible sin restricción"),
-        ]
-        for path, desc in paths:
-            try:
-                async with self._s.get(
-                    url_base.rstrip("/") + path, timeout=timeout, ssl=False
-                ) as r:
-                    if r.status == 200:
-                        texto = await r.text(errors="replace")
-                        if "Drupal" in texto and (
-                            "install" in texto.lower() or "update" in texto.lower()
-                        ):
-                            hallazgos.append({"cve": None, "severity": "HIGH",
-                                "description": desc,
-                                "cvss": 7.3, "evidence": url_base + path,
-                                "remediation": "Restringir el acceso a install.php y update.php "
-                                               "por IP en el servidor web o eliminarlos si no se usan. "
-                                               "En Apache: Deny from all en .htaccess para esos ficheros."})
-            except Exception:
-                continue
-        return hallazgos
-
-    async def _check_changelog_exposure(self, url_base: str, timeout) -> List[Dict]:
-        """Detecta exposición del CHANGELOG.txt que revela la versión exacta de Drupal."""
-        for path in ("/core/CHANGELOG.txt", "/CHANGELOG.txt"):
-            try:
-                async with self._s.get(
-                    url_base.rstrip("/") + path, timeout=timeout, ssl=False
-                ) as r:
-                    if r.status == 200:
-                        texto = await r.text(errors="replace")
-                        if "Drupal" in texto and "release" in texto.lower():
-                            return [{"cve": None, "severity": "MEDIUM",
-                                "description": f"CHANGELOG.txt público expone versión exacta de Drupal ({path})",
-                                "cvss": 5.3, "evidence": url_base + path,
-                                "remediation": "Configurar el servidor web para bloquear acceso "
-                                               "a ficheros .txt en la raíz de Drupal. "
-                                               "Apache: FilesMatch directive. nginx: location ~* \\.txt$"}]
-            except Exception:
-                continue
-        return []
 
 
 # =============================================================================
@@ -1163,19 +664,15 @@ class UploadChecker:
         self.session = session
         self.to = aiohttp.ClientTimeout(total=8)
 
-    async def check_xmlrpc(self, url_base: str) -> Tuple[bool, List[str]]:
+    async def check_xmlrpc(self, url_base: str) -> bool:
         """
-        Verifica si XML-RPC está habilitado y extrae la lista de métodos expuestos.
+        Verifica si XML-RPC está habilitado enviando una llamada a system.listMethods.
 
         XML-RPC habilitado es un factor de riesgo porque permite ataques de
         fuerza bruta multi-llamada (una petición = múltiples intentos de login)
         y puede ser el vector de exploits de plugins como CVE-2020-25213.
 
-        Adicionalmente, métodos como wp.getUsersBlogs o system.multicall
-        elevan la severidad al permitir enumeración de usuarios y amplificación
-        de peticiones de autenticación (HTTP multiplexing attack).
-
-        Retorna (habilitado, lista_de_métodos). Si está deshabilitado: (False, []).
+        Retorna True si XML-RPC responde con una lista de métodos válida.
         """
         try:
             async with self.session.post(
@@ -1186,14 +683,9 @@ class UploadChecker:
                 ssl=False,
             ) as r:
                 cuerpo = await r.text(errors="replace")
-                if r.status != 200 or "<methodResponse>" not in cuerpo:
-                    return False, []
-                # Extraer los nombres de método de la respuesta XML
-                import re
-                metodos = re.findall(r"<string>([^<]+)</string>", cuerpo)
-                return True, metodos
+                return r.status == 200 and "<methodResponse>" in cuerpo
         except Exception:
-            return False, []
+            return False
 
     async def check_rest_api(self, url_base: str) -> bool:
         """
@@ -1213,31 +705,6 @@ class UploadChecker:
             ) as r:
                 cuerpo = await r.text(errors="replace")
                 return r.status == 200 and '"id"' in cuerpo
-        except Exception:
-            return False
-
-    async def check_rest_api_base(self, url_base: str) -> bool:
-        """
-        Comprueba si el endpoint base de la API REST (/wp-json/wp/v2/) responde
-        incluso cuando /users está protegido.
-
-        Un endpoint base accesible indica que la API REST está habilitada; si además
-        /users devuelve datos la severidad es mayor (WP_REST_USER_ENUM).
-
-        Retorna True si /wp-json/wp/v2/ responde con JSON de la API (code/routes).
-        """
-        try:
-            async with self.session.get(
-                f"{url_base}/wp-json/wp/v2/",
-                timeout=self.to,
-                ssl=False,
-                allow_redirects=True,
-            ) as r:
-                if r.status != 200:
-                    return False
-                cuerpo = await r.text(errors="replace")
-                # La API REST base devuelve JSON con campos "namespace" o "routes"
-                return '"namespace"' in cuerpo or '"routes"' in cuerpo
         except Exception:
             return False
 
@@ -1606,7 +1073,7 @@ class ReportGenerator:
         """
         datos = {
             "tool": "vamp-wp2shell-audit",
-            "version": "1.2",
+            "version": "1.0",
             "generated": datetime.now(timezone.utc).isoformat(),
             "summary": {
                 "objetivos": len(results),
@@ -1786,33 +1253,15 @@ class WPScanner:
             resultado.error = str(e)[:100]
             return resultado
 
-        # ── Detección multi-CMS (Joomla / Drupal) ─────────────────────────────
-        if not resultado.is_wordpress:
-            if JoomlaDetector.detect_passive(contenido, {}):
-                resultado.cms_type    = "Joomla"
-                resultado.cms_version = await JoomlaDetector.get_version(session, url_base, tiempo_limite)
-                auditor_joomla = JoomlaAuditor(session)
-                resultado.cms_findings = await auditor_joomla.run(url_base, tiempo_limite)
-            elif DrupalDetector.detect_passive(contenido, {}):
-                resultado.cms_type    = "Drupal"
-                resultado.cms_version = await DrupalDetector.get_version(session, url_base, tiempo_limite)
-                auditor_drupal = DrupalAuditor(session)
-                resultado.cms_findings = await auditor_drupal.run(url_base, tiempo_limite)
-
-        # Si no es WordPress ni otro CMS conocido y no se fuerza el análisis, terminar aquí
-        if not resultado.is_wordpress and not resultado.cms_type and not self.args.force:
-            return resultado
-
-        # Las fases 2-5 son exclusivas de WordPress; si es otro CMS, retornar con hallazgos ya recogidos
-        if resultado.cms_type and not resultado.is_wordpress:
+        # Si no es WordPress y no se fuerza el análisis, terminar aquí
+        if not resultado.is_wordpress and not self.args.force:
             return resultado
 
         # ── Fase 2: Mapeo de superficie (todas las verificaciones en paralelo) ─
         verificador = UploadChecker(session)
-        (xmlrpc_result, rest_api, rest_api_base, upload_dir, debug, sqli) = await asyncio.gather(
+        (xmlrpc, rest_api, upload_dir, debug, sqli) = await asyncio.gather(
             verificador.check_xmlrpc(url_base),
             verificador.check_rest_api(url_base),
-            verificador.check_rest_api_base(url_base),
             verificador.check_upload_dir_listing(url_base),
             verificador.check_debug_mode(url_base),
             verificador.detectar_sqli_vectors(url_base),
@@ -1820,87 +1269,11 @@ class WPScanner:
         )
 
         # Asignar resultados de forma segura (si gather devuelve una excepción, usar valor por defecto)
-        if isinstance(xmlrpc_result, tuple):
-            resultado.xmlrpc_enabled = xmlrpc_result[0]
-            resultado.xmlrpc_methods = xmlrpc_result[1]
-        elif isinstance(xmlrpc_result, Exception):
-            resultado.xmlrpc_enabled = False
-            resultado.xmlrpc_methods = []
-        else:
-            resultado.xmlrpc_enabled = bool(xmlrpc_result)
-            resultado.xmlrpc_methods = []
-
-        resultado.rest_api_exposed       = bool(rest_api)       if not isinstance(rest_api,       Exception) else False
-        resultado.rest_api_base_accessible = bool(rest_api_base) if not isinstance(rest_api_base, Exception) else False
-        resultado.upload_dir_exposed     = bool(upload_dir)     if not isinstance(upload_dir,     Exception) else False
-        resultado.debug_mode             = bool(debug)          if not isinstance(debug,           Exception) else False
-        resultado.sqli_vectors           = sqli                  if isinstance(sqli, list) else []
-
-        # ── Hallazgos XML-RPC y REST API ──────────────────────────────────────
-        # Los hallazgos se almacenan como "plugin_findings" para reutilizar el
-        # pipeline de reporte existente, con tipo="surface" para diferenciarlos.
-        if resultado.xmlrpc_enabled and getattr(self.args, "check_xmlrpc", True):
-            # Detectar métodos de alto riesgo
-            metodos_alto_riesgo = {"wp.getUsersBlogs", "system.multicall", "wp.getUsers",
-                                   "wp.getAuthors", "wp.getUserInfo"}
-            metodos_expuestos_ar = [m for m in resultado.xmlrpc_methods if m in metodos_alto_riesgo]
-            if metodos_expuestos_ar:
-                severidad = "HIGH"
-                descripcion = (
-                    f"XML-RPC habilitado con métodos de alto riesgo: {', '.join(metodos_expuestos_ar)}. "
-                    "Los métodos wp.getUsersBlogs/wp.getUsers permiten enumerar usuarios "
-                    "sin autenticación; system.multicall habilita amplificación de ataques "
-                    "de fuerza bruta (cientos de intentos por petición HTTP)."
-                )
-            else:
-                severidad = "MEDIUM"
-                n_metodos = len(resultado.xmlrpc_methods)
-                descripcion = (
-                    f"XML-RPC habilitado ({n_metodos} métodos expuestos). "
-                    "Amplía la superficie de ataque: permite fuerza bruta de credenciales "
-                    "y puede ser vector de exploits de plugins (CVE-2020-25213 y similares). "
-                    "Deshabilitar XML-RPC si no se utiliza (disable-xmlrpc plugin o regla nginx)."
-                )
-            resultado.plugin_findings.append({
-                "type":    "surface",
-                "cve":     "WP-XMLRPC-001",
-                "severity": severidad,
-                "cvss":    7.5 if severidad == "HIGH" else 5.3,
-                "description": descripcion,
-                "methods": resultado.xmlrpc_methods,
-                "high_risk_methods": metodos_expuestos_ar,
-                "remediation": "Añadir `add_filter('xmlrpc_enabled', '__return_false');` en functions.php o bloquear /xmlrpc.php en nginx/Apache.",
-            })
-
-        if resultado.rest_api_exposed and getattr(self.args, "check_xmlrpc", True):
-            # /wp-json/wp/v2/users devuelve usuarios — enumeración directa
-            resultado.plugin_findings.append({
-                "type":      "surface",
-                "cve":       "WP-REST-USER-ENUM-001",
-                "severity":  "HIGH",
-                "cvss":      7.5,
-                "description": (
-                    "El endpoint /wp-json/wp/v2/users devuelve la lista de usuarios "
-                    "de WordPress sin autenticación. Permite enumerar usernames "
-                    "(incluyendo administradores) para ataques de fuerza bruta dirigidos "
-                    "o credential stuffing. CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N."
-                ),
-                "remediation": "Añadir `add_filter('rest_endpoints', function($e){ unset($e[\"/wp/v2/users\"]); return $e; });` o actualizar a WP ≥ 5.5 y revisar la política de roles.",
-            })
-        elif resultado.rest_api_base_accessible and getattr(self.args, "check_xmlrpc", True):
-            # La API REST existe pero /users está protegido — hallazgo informativo
-            resultado.plugin_findings.append({
-                "type":      "surface",
-                "cve":       "WP-REST-API-ENABLED",
-                "severity":  "INFO",
-                "cvss":      0.0,
-                "description": (
-                    "La API REST de WordPress está habilitada (/wp-json/wp/v2/ accesible) "
-                    "pero el endpoint /users devuelve error o está protegido. "
-                    "Configuración correcta: los usuarios no son enumerables sin autenticación."
-                ),
-                "remediation": "Sin acción necesaria. Verificar periódicamente que /wp-json/wp/v2/users siga protegido.",
-            })
+        resultado.xmlrpc_enabled    = bool(xmlrpc)    if not isinstance(xmlrpc,    Exception) else False
+        resultado.rest_api_exposed  = bool(rest_api)  if not isinstance(rest_api,  Exception) else False
+        resultado.upload_dir_exposed = bool(upload_dir) if not isinstance(upload_dir, Exception) else False
+        resultado.debug_mode        = bool(debug)     if not isinstance(debug,     Exception) else False
+        resultado.sqli_vectors      = sqli            if isinstance(sqli, list) else []
 
         # ── Fase 3: Fingerprinting de plugins y temas ─────────────────────────
         fingerprinter = PluginFingerprinter(session, self.args.timeout)
@@ -2100,23 +1473,12 @@ def mostrar_tabla_resultados(results: List[ScanResult]):
             else ("[dim]—[/dim]" if not r.canary else "[yellow]intentado[/yellow]")
         )
 
-        # Mostrar CMS detectado: WordPress o Joomla/Drupal
-        if r.is_wordpress:
-            cms_cell = "[green]WP[/green]"
-            ver_cell  = r.wp_version or "—"
-        elif r.cms_type:
-            cms_cell = f"[cyan]{r.cms_type}[/cyan]"
-            ver_cell  = r.cms_version or "—"
-        else:
-            cms_cell = "[dim]—[/dim]"
-            ver_cell  = "—"
-
         tabla.add_row(
             r.target,
-            cms_cell,
-            ver_cell,
+            "[green]✓[/green]" if r.is_wordpress else "[dim]✗[/dim]",
+            r.wp_version or "—",
             str(len(r.installed_plugins)) if r.installed_plugins else "—",
-            str(len(r.plugin_findings) + len(r.cms_findings)),
+            str(len(r.plugin_findings)),
             str(vectores_subida) if vectores_subida else "—",
             str(len(r.sqli_vectors)) if r.sqli_vectors else "—",
             canario_str,
@@ -2137,16 +1499,10 @@ def mostrar_paneles_detalle(results: List[ScanResult]):
             f for f in r.plugin_findings + r.theme_findings
             if f.get("cvss", 0) >= 7.0
         ]
-        # Mostrar también hallazgos de Joomla/Drupal
-        cms_relevantes = [f for f in r.cms_findings if f.get("cvss", 0) >= 5.0]
-        if not hallazgos_relevantes and not r.sqli_vectors and not cms_relevantes:
+        if not hallazgos_relevantes and not r.sqli_vectors:
             continue
 
-        if r.cms_type:
-            cms_ver = f" v{r.cms_version}" if r.cms_version else ""
-            lineas = [f"[bold]{r.target}[/bold]  ({r.cms_type}{cms_ver})"]
-        else:
-            lineas = [f"[bold]{r.target}[/bold]  (WP {r.wp_version or 'desconocida'})"]
+        lineas = [f"[bold]{r.target}[/bold]  (WP {r.wp_version or 'desconocida'})"]
 
         # Indicadores de superficie de ataque detectados
         superficie = []
@@ -2183,18 +1539,6 @@ def mostrar_paneles_detalle(results: List[ScanResult]):
         for v in r.sqli_vectors:
             lineas.append(f"\n  [bold red]► Vector SQLi[/bold red]  {v.get('url', '')}")
             lineas.append(f"    {v.get('description', '')}")
-
-        # Hallazgos Joomla / Drupal
-        for f in cms_relevantes:
-            sev_color = {"CRITICAL": "red", "HIGH": "yellow", "MEDIUM": "magenta"}.get(f.get("severity", ""), "white")
-            cve_label = f.get("cve") or "Misconfiguration"
-            lineas.append(
-                f"\n  [bold {sev_color}]► {cve_label}[/bold {sev_color}]  "
-                f"CVSS {f.get('cvss', '?')}  [{f.get('severity', 'MEDIUM')}]"
-            )
-            lineas.append(f"    {f.get('description', '')}")
-            if f.get("evidence"):
-                lineas.append(f"    [dim]Evidencia:[/dim] {f['evidence']}")
 
         # Resultado del canario
         if r.canary and r.canary.get("intentado"):
@@ -2243,132 +1587,6 @@ def cargar_objetivos(args) -> List[str]:
     return list(dict.fromkeys(objetivos))  # Deduplicar preservando orden de inserción
 
 
-# =============================================================================
-# CONVERSOR A FORMATO DE INFORME UNIFICADO VSL
-# =============================================================================
-
-def _findings_vsl(results: List[ScanResult]) -> list:
-    """
-    Convierte los resultados del escáner al formato Finding unificado de VampSecure Labs.
-
-    Solo se incluyen hallazgos de severidad MEDIUM, HIGH o CRITICAL con CVE confirmado
-    o con version_confirmed=False (plugin presente pero versión no legible).
-
-    Parámetros
-    ----------
-    results : List[ScanResult]  — Lista de resultados del escáner
-
-    Retorna
-    -------
-    List[Finding]  — Lista de hallazgos en formato VSL con prefijo WP-NNN
-    """
-    from vampsec_report import Finding as VSLFinding
-
-    SEVERIDADES_INCLUIDAS = {"CRITICAL", "HIGH", "MEDIUM"}
-    hallazgos: list = []
-    n = 0
-
-    for r in results:
-        if r.error == "OUT_OF_SCOPE":
-            continue
-
-        # ── Hallazgos de plugins ─────────────────────────────────────────────
-        for f in r.plugin_findings:
-            if f.get("severity") not in SEVERIDADES_INCLUIDAS:
-                continue
-            n += 1
-
-            # Evidencia detallada con datos de endpoint y versión
-            partes_evidencia = [
-                f"CVE: {f.get('cve', 'N/A')}",
-                f"CVSS: {f.get('cvss', 'N/A')}",
-                f"Autenticación requerida: {'Sí' if f.get('auth_required') else 'No'}",
-            ]
-            if f.get("detected_version"):
-                partes_evidencia.append(f"Versión detectada: {f['detected_version']}")
-            elif not f.get("version_confirmed"):
-                partes_evidencia.append("Versión: no legible (plugin presente en servidor)")
-            if f.get("upload_endpoint"):
-                accesible = f.get("endpoint_accessible", False)
-                estado    = f.get("endpoint_status", "—")
-                partes_evidencia.append(
-                    f"Endpoint de subida: {f['upload_endpoint']} "
-                    f"[{'ACCESIBLE' if accesible else 'no accesible'}, HTTP {estado}]"
-                )
-
-            hallazgos.append(VSLFinding(
-                id          = f"WP-{n:03d}",
-                title       = f"{f.get('cve', 'Vulnerabilidad')} — {f.get('description', '')[:80]}",
-                severity    = f.get("severity", "MEDIUM"),
-                description = f.get("description", "Vulnerabilidad detectada en plugin WordPress."),
-                evidence    = " | ".join(partes_evidencia),
-                affected    = r.target,
-                remediation = (
-                    f"Actualizar el plugin a la versión parcheada que corrige {f.get('cve', 'este CVE')}. "
-                    "Consultar el aviso oficial del autor del plugin o el repositorio de WordPress.org."
-                ),
-                cvss        = f.get("cvss"),
-                cve         = f.get("cve"),
-                tags        = ["wordpress", "plugin", f.get("severity", "MEDIUM").lower()],
-            ))
-
-        # ── Hallazgos de temas ───────────────────────────────────────────────
-        for f in r.theme_findings:
-            if f.get("severity") not in SEVERIDADES_INCLUIDAS:
-                continue
-            n += 1
-
-            partes_evidencia = [
-                f"CVE: {f.get('cve', 'N/A')}",
-                f"CVSS: {f.get('cvss', 'N/A')}",
-                f"Autenticación requerida: {'Sí' if f.get('auth_required') else 'No'}",
-            ]
-            if f.get("detected_version"):
-                partes_evidencia.append(f"Versión detectada: {f['detected_version']}")
-            if f.get("upload_endpoint"):
-                partes_evidencia.append(f"Endpoint afectado: {f['upload_endpoint']}")
-
-            hallazgos.append(VSLFinding(
-                id          = f"WP-{n:03d}",
-                title       = f"{f.get('cve', 'Vulnerabilidad')} — {f.get('description', '')[:80]}",
-                severity    = f.get("severity", "MEDIUM"),
-                description = f.get("description", "Vulnerabilidad detectada en tema WordPress."),
-                evidence    = " | ".join(partes_evidencia),
-                affected    = r.target,
-                remediation = (
-                    f"Actualizar el tema a la versión parcheada que corrige {f.get('cve', 'este CVE')}. "
-                    "Consultar el aviso oficial del desarrollador del tema o el repositorio de WordPress.org."
-                ),
-                cvss        = f.get("cvss"),
-                cve         = f.get("cve"),
-                tags        = ["wordpress", "theme", f.get("severity", "MEDIUM").lower()],
-            ))
-
-        # ── Hallazgos Joomla / Drupal ─────────────────────────────────────────
-        cms_label = r.cms_type.lower() if r.cms_type else "cms"
-        for f in r.cms_findings:
-            if f.get("severity") not in SEVERIDADES_INCLUIDAS:
-                continue
-            n += 1
-            ev_parts = [f"Evidencia: {f.get('evidence', r.target)}"]
-            if f.get("cvss"):
-                ev_parts.append(f"CVSS: {f['cvss']}")
-            hallazgos.append(VSLFinding(
-                id          = f"WP-{n:03d}",
-                title       = f"{f.get('cve') or 'Misconfiguration'} — {f.get('description', '')[:80]}",
-                severity    = f.get("severity", "MEDIUM"),
-                description = f.get("description", f"Hallazgo de seguridad en {r.cms_type}."),
-                evidence    = " | ".join(ev_parts),
-                affected    = r.target,
-                remediation = f.get("remediation", f"Revisar la configuración de {r.cms_type} y aplicar actualizaciones."),
-                cvss        = f.get("cvss"),
-                cve         = f.get("cve"),
-                tags        = [cms_label, "cms", f.get("severity", "MEDIUM").lower()],
-            ))
-
-    return hallazgos
-
-
 def main():
     console.print(BANNER, style="bold magenta")
 
@@ -2397,21 +1615,12 @@ def main():
                         help="Activar test de subida canario en endpoints confirmados (requiere autorización)")
     parser.add_argument("--force",             action="store_true",
                         help="Auditar aunque WordPress no sea detectado")
-    parser.add_argument("--check-xmlrpc",     action="store_true", dest="check_xmlrpc", default=True,
-                        help="Probar XML-RPC y enumeración de usuarios REST API (activado por defecto)")
-    parser.add_argument("--no-check-xmlrpc",  action="store_false", dest="check_xmlrpc",
-                        help="Desactivar las pruebas de XML-RPC y enumeración REST API")
     parser.add_argument("-o", "--output",      metavar="FICHERO",
                         help="Ruta del informe JSON de salida")
     parser.add_argument("--html",              metavar="FICHERO",
                         help="Ruta del informe HTML de salida")
     parser.add_argument("-v", "--verbose",     action="store_true",
                         help="Salida detallada")
-
-    # Argumentos de informe unificado VSL (--client, --engagement, --auditor,
-    # --report-scope, --report-html, --report-pdf)
-    from vampsec_report import add_report_args
-    add_report_args(parser)
 
     args = parser.parse_args()
 
@@ -2454,18 +1663,6 @@ def main():
     if args.html:
         ReportGenerator.to_html(resultados, args.html)
         console.print(f"[bold green][✓] Informe HTML guardado: {args.html}[/bold green]")
-
-    # ── Informe unificado VSL (cliente) ───────────────────────────────────────
-    if getattr(args, "report_html", None) or getattr(args, "report_pdf", None):
-        from vampsec_report import VampSecReport, meta_from_args
-        meta   = meta_from_args(args, tool="vamp-wp2shell-audit", version="1.2")
-        report = VampSecReport(meta=meta, findings=_findings_vsl(resultados))
-        if args.report_html:
-            report.to_html_client(args.report_html)
-            console.print(f"[bold green][✓] Informe cliente HTML guardado: {args.report_html}[/bold green]")
-        if args.report_pdf:
-            report.to_pdf(args.report_pdf)
-            console.print(f"[bold green][✓] Informe cliente PDF guardado: {args.report_pdf}[/bold green]")
 
     # Resumen final de la auditoría
     total_cves   = sum(len(r.plugin_findings) for r in resultados)
