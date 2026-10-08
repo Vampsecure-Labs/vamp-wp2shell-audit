@@ -131,6 +131,109 @@ python3 vamp_wp2shell_audit.py -t https://example.com \
 | `1` | High-severity findings detected | Pipeline fails — review required |
 | `2` | Critical-severity findings detected | Pipeline fails — immediate action required |
 
+## Sample Output
+
+```
+$ python3 vamp_wp2shell_audit.py \
+    -t https://blog.example.com https://shop.example.com \
+    -c 5 --canary -o results.json
+
+╭──────────────────────────────────────────────────────────────────╮
+│  vamp-wp2shell-audit v1.1 — WordPress Upload Vector Auditor      │
+│  VampSecure Labs Security Research Division                      │
+╰──────────────────────────────────────────────────────────────────╯
+
+[+] Targets: 2  · Concurrency: 5  · Canary: ON
+
+── blog.example.com ──────────────────────────────────────────────
+[+] CMS detected : WordPress 6.3.1
+[+] Theme        : Astra 3.7.4 (via readme.txt)
+[+] Plugins found: 7
+
+╭─ CRITICAL — WP-003 ─────────────────────────────────────────────╮
+│ wp-file-manager 6.0 (CVE-2020-25213, CVSS 9.8)                   │
+│ Unauthenticated arbitrary file upload / RCE                       │
+│ Installed: 6.0 · Fixed: >= 6.9                                   │
+│ Path: /wp-content/plugins/wp-file-manager/                       │
+╰──────────────────────────────────────────────────────────────────╯
+
+╭─ HIGH — WP-001 ─────────────────────────────────────────────────╮
+│ WordPress version disclosed in meta generator tag                │
+│ <meta name="generator" content="WordPress 6.3.1"/>               │
+│ Exposes patch lag; combine with plugin CVEs for exploitation     │
+╰──────────────────────────────────────────────────────────────────╯
+
+╭─ HIGH — WP-005 ─────────────────────────────────────────────────╮
+│ XML-RPC endpoint reachable (system.listMethods → HTTP 200)       │
+│ URL: https://blog.example.com/xmlrpc.php                         │
+│ Risk: brute-force amplification (multicall) and SSRF pivot       │
+╰──────────────────────────────────────────────────────────────────╯
+
+╭─ CRITICAL — WP-CANARY ──────────────────────────────────────────╮
+│ Canary upload confirmed — file write achievable                  │
+│ Upload path  : /wp-content/uploads/2026/10/vsl_canary_test.txt  │
+│ HTTP response: 200 · Auto-deleted via REST DELETE ✓              │
+│ Risk score   : 9.8 (CVE) + 3.0 (canary confirmed) = 12.8 / 13.0 │
+╰──────────────────────────────────────────────────────────────────╯
+
+── shop.example.com ──────────────────────────────────────────────
+[+] CMS detected: WordPress 6.5.2
+[+] Plugins: WooCommerce Payments 5.6.1 (CVE-2023-28121, CVSS 9.8)
+
+╭─ CRITICAL — WP-003 ─────────────────────────────────────────────╮
+│ WooCommerce Payments 5.6.1 (CVE-2023-28121)                      │
+│ Unauthenticated privilege escalation to administrator            │
+│ Fix: upgrade to >= 5.6.2                                         │
+╰──────────────────────────────────────────────────────────────────╯
+
+┌──────────┬──────────────────────────────────────────────────────┐
+│ Severity │ Count (2 targets)                                    │
+├──────────┼──────────────────────────────────────────────────────┤
+│ CRITICAL │ 4                                                    │
+│ HIGH     │ 5                                                    │
+│ MEDIUM   │ 3                                                    │
+│ LOW      │ 2                                                    │
+│ PASS     │ 8                                                    │
+└──────────┴──────────────────────────────────────────────────────┘
+[+] Results exported → results.json
+Exit code: 2 (CRITICAL findings — immediate action required)
+```
+
+## Why vamp-wp2shell-audit vs. WPScan · Nikto · Wordfence CLI
+
+| Feature | vamp-wp2shell-audit | WPScan | Nikto | Wordfence CLI |
+|---------|:-------------------:|:------:|:-----:|:-------------:|
+| Multi-target async batch scan | ✅ async + semaphore | ❌ single target | ❌ single target | ❌ |
+| Canary upload confirmation (PHP-inert, auto-deleted) | ✅ | ❌ | ❌ | ❌ |
+| Joomla + Drupal fingerprinting in same tool | ✅ | ❌ WP only | ✅ | ❌ WP only |
+| Scope file enforcement (out-of-scope targets skipped) | ✅ | ⚠️ | ❌ | ❌ |
+| Client engagement report (HTML + PDF) | ✅ | ❌ | ❌ | ❌ |
+| OWASP Top 10 A05 / CWE-78 aligned findings | ✅ | ⚠️ partial | ⚠️ partial | ❌ |
+| No API key required for core functionality | ✅ | ❌ WPScan API token | ✅ | ❌ premium |
+| Risk scoring formula (CVSS × confidence + surface bonuses) | ✅ | ❌ | ❌ | ⚠️ |
+
+- **Canary upload test**: unlike WPScan or Nikto, `vamp-wp2shell-audit` goes beyond enumeration — `--canary` attempts a PHP-inert file write and immediately auto-deletes it via the REST API DELETE endpoint, giving definitive proof that file upload exploitation is feasible on the target.
+- **Async multi-target**: built on `aiohttp` with a configurable semaphore, a batch of 50 targets scans in the time WPScan takes for five; scope enforcement ensures nothing outside the engagement boundary is touched.
+- **Engagement-ready deliverable**: `--client`, `--engagement`, and `--auditor` fields feed a unified HTML + PDF client report, ready to hand to the customer without post-processing.
+- **Multi-CMS in one binary**: Joomla (CVE-2023-23752) and Drupal (CVE-2018-7600 Drupalgeddon 2) fingerprinting are built in — useful when a target asset list includes mixed CMS installations.
+
+## Check Coverage
+
+| Check ID | Description | Standard | Severity |
+|----------|-------------|----------|----------|
+| WP-001 | WordPress core version disclosed via meta generator tag | OWASP WSTG-INFO-02 | MEDIUM |
+| WP-002 | WordPress core version outdated — known CVEs in installed version | OWASP Top 10 A06:2021 | HIGH |
+| WP-003 | Plugin CVE match — installed version within vulnerable range | OWASP Top 10 A06:2021 | CRITICAL / HIGH |
+| WP-004 | Theme CVE match — version fingerprinted via readme.txt / style.css | OWASP Top 10 A06:2021 | MEDIUM |
+| WP-005 | XML-RPC endpoint reachable (brute-force amplification / SSRF pivot) | OWASP WSTG-CONF-02 | HIGH |
+| WP-006 | REST API user enumeration exposed (/wp-json/wp/v2/users) | OWASP WSTG-IDNT-04 | MEDIUM |
+| WP-007 | wp-admin login interface directly accessible without IP restriction | OWASP Top 10 A05 (Security Misconfiguration) | MEDIUM |
+| WP-008 | Uploads directory listing enabled — file enumeration possible | OWASP WSTG-CONF-03 | HIGH |
+| WP-009 | WP_DEBUG active in production — verbose error disclosure | OWASP WSTG-CONF-07 | MEDIUM |
+| WP-010 | SQLi parameter probe on public URL arguments | CWE-89 · OWASP WSTG-INPV-05 | HIGH |
+| WP-011 | Canary upload confirms real file-write exploitation path | CWE-434 · OWASP Top 10 A05 | CRITICAL |
+| WP-012 | Web shell pattern detected in uploads (eval / base64 / system calls) | CWE-78 · OWASP Top 10 A03:2021 | CRITICAL |
+
 ## Legal Notice
 
 Use exclusively on systems you own or for which you hold explicit written authorization from the system owner. The `--canary` flag performs a real write operation against the target server. VampSecure Studios assumes no liability for unauthorized use.
