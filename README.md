@@ -19,7 +19,7 @@
 <a name="english"></a>
 ## 🇬🇧 English
 
-`vamp-wp2shell-audit` is an async, multi-target WordPress security auditor focused on upload vectors, vulnerable plugin detection, and attack surface enumeration. It fingerprints installed plugins and themes against a curated CVE database (CVSS 7.0–9.8), probes for XML-RPC, REST API user enumeration, open upload directories, and active SQLi parameters. An optional canary upload phase — using a PHP-inert file with auto-deletion — confirms whether file-write exploitation is achievable on a live target. Also supports Joomla (CVE-2023-23752) and Drupal (CVE-2018-7600 Drupalgeddon 2) fingerprinting.
+`vamp-wp2shell-audit` is an async, multi-target WordPress security auditor focused on upload vectors, vulnerable plugin detection, and attack surface enumeration. It fingerprints installed plugins and themes against a curated CVE database (CVSS 7.0–9.8), probes for XML-RPC, REST API user enumeration, open upload directories, and active SQLi parameters. An optional canary upload phase — using a PHP-inert file with auto-deletion — confirms whether file-write exploitation is achievable on a live target.
 
 ### Features
 
@@ -28,7 +28,7 @@
 - Theme CVE coverage and version fingerprinting via `readme.txt` / `style.css` Stable tag
 - Attack surface checks: XML-RPC, REST API user enumeration, uploads directory listing, `WP_DEBUG` active
 - Basic SQLi vector probing on public URL parameters
-- Multi-CMS detection: WordPress, Joomla, Drupal with version fingerprinting
+- WordPress detection and core/plugin/theme version fingerprinting
 - Canary upload test: PHP-inert file (no syscalls, `die()` guard), auto-deleted via REST API DELETE
 - Scope file enforcement — targets outside scope are skipped (`-s/--scope`)
 - Risk scoring formula: composite CVSS × version-confidence factor + surface bonuses (XML-RPC +0.5, canary confirmed +3.0)
@@ -212,7 +212,7 @@ Exit code: 2 (CRITICAL findings — immediate action required)
 |---------|:-------------------:|:------:|:-----:|:-------------:|
 | Multi-target async batch scan | ✅ async + semaphore | ❌ single target | ❌ single target | ❌ |
 | Canary upload confirmation (PHP-inert, auto-deleted) | ✅ | ❌ | ❌ | ❌ |
-| Joomla + Drupal fingerprinting in same tool | ✅ | ❌ WP only | ✅ | ❌ WP only |
+| Plugin/theme CVE database with version matching | ✅ | ✅ (WPScan API) | ❌ | ⚠️ premium |
 | Scope file enforcement (out-of-scope targets skipped) | ✅ | ⚠️ | ❌ | ❌ |
 | Client engagement report (HTML + PDF) | ✅ | ❌ | ❌ | ❌ |
 | OWASP Top 10 A05 / CWE-78 aligned findings | ✅ | ⚠️ partial | ⚠️ partial | ❌ |
@@ -222,7 +222,7 @@ Exit code: 2 (CRITICAL findings — immediate action required)
 - **Canary upload test**: unlike WPScan or Nikto, `vamp-wp2shell-audit` goes beyond enumeration — `--canary` attempts a PHP-inert file write and immediately auto-deletes it via the REST API DELETE endpoint, giving definitive proof that file upload exploitation is feasible on the target.
 - **Async multi-target**: built on `aiohttp` with a configurable semaphore, a batch of 50 targets scans in the time WPScan takes for five; scope enforcement ensures nothing outside the engagement boundary is touched.
 - **Engagement-ready deliverable**: `--client`, `--engagement`, and `--auditor` fields feed a unified HTML + PDF client report, ready to hand to the customer without post-processing.
-- **Multi-CMS in one binary**: Joomla (CVE-2023-23752) and Drupal (CVE-2018-7600 Drupalgeddon 2) fingerprinting are built in — useful when a target asset list includes mixed CMS installations.
+- **WordPress-focused precision**: a curated plugin/theme CVE database with version matching avoids the false positives of generic version-only guesses.
 
 ### Check Coverage
 
@@ -247,7 +247,8 @@ Exit code: 2 (CRITICAL findings — immediate action required)
 |---------|-------------|
 | v1.2 | Bilingual README (EN/ES) |
 | v1.1 | Sample Output, Why comparison, Check Coverage |
-| v1.0 | Initial release — async multi-target, canary upload, CVE database, multi-CMS |
+| v1.3 | README corrected: the tool is WordPress-focused; removed the unimplemented Joomla/Drupal multi-CMS claims. |
+| v1.0 | Initial release — async multi-target, canary upload, CVE database |
 
 ### Legal Notice
 
@@ -271,7 +272,7 @@ For use in authorized audits only. Unauthorized use is illegal.
 <a name="español"></a>
 ## 🇪🇸 Español
 
-`vamp-wp2shell-audit` es un auditor de seguridad WordPress asíncrono y multi-objetivo, centrado en vectores de subida de ficheros, detección de plugins vulnerables y enumeración de la superficie de ataque. Realiza fingerprinting de los plugins y temas instalados contra una base de datos CVE curada (CVSS 7.0–9.8), sondea XML-RPC, enumeración de usuarios por la REST API, directorios de subida abiertos y parámetros SQLi activos. Una fase opcional de subida canary — usando un fichero PHP-inerte con auto-borrado — confirma si la explotación de escritura de ficheros es viable en el objetivo real. También soporta fingerprinting de Joomla (CVE-2023-23752) y Drupal (CVE-2018-7600 Drupalgeddon 2).
+`vamp-wp2shell-audit` es un auditor de seguridad WordPress asíncrono y multi-objetivo, centrado en vectores de subida de ficheros, detección de plugins vulnerables y enumeración de la superficie de ataque. Realiza fingerprinting de los plugins y temas instalados contra una base de datos CVE curada (CVSS 7.0–9.8), sondea XML-RPC, enumeración de usuarios por la REST API, directorios de subida abiertos y parámetros SQLi activos. Una fase opcional de subida canary — usando un fichero PHP-inerte con auto-borrado — confirma si la explotación de escritura de ficheros es viable en el objetivo real.
 
 ### Características
 
@@ -280,7 +281,7 @@ For use in authorized audits only. Unauthorized use is illegal.
 - Cobertura CVE de temas y fingerprinting de versión mediante `readme.txt` / `style.css` Stable tag
 - Checks de superficie de ataque: XML-RPC, enumeración de usuarios por REST API, listado de directorio de subidas, `WP_DEBUG` activo
 - Sondeo básico de vectores SQLi en parámetros de URL públicos
-- Detección multi-CMS: WordPress, Joomla, Drupal con fingerprinting de versión
+- Detección de WordPress y fingerprinting de versión de core/plugins/temas
 - Test de subida canary: fichero PHP-inerte (sin syscalls, guardia `die()`), auto-borrado vía REST API DELETE
 - Aplicación de fichero de scope — los objetivos fuera de scope se omiten (`-s/--scope`)
 - Fórmula de puntuación de riesgo: CVSS compuesto × factor de confianza de versión + bonificaciones de superficie (XML-RPC +0.5, canary confirmado +3.0)
@@ -464,7 +465,7 @@ Exit code: 2 (CRITICAL findings — immediate action required)
 |----------------|:-------------------:|:------:|:-----:|:-------------:|
 | Escaneo batch asíncrono multi-objetivo | ✅ async + semáforo | ❌ un solo objetivo | ❌ un solo objetivo | ❌ |
 | Confirmación de subida canary (PHP-inerte, auto-borrado) | ✅ | ❌ | ❌ | ❌ |
-| Fingerprinting Joomla + Drupal en la misma herramienta | ✅ | ❌ solo WP | ✅ | ❌ solo WP |
+| Base de datos CVE de plugins/temas con match por versión | ✅ | ✅ (API WPScan) | ❌ | ⚠️ premium |
 | Aplicación de fichero de scope (objetivos fuera de scope omitidos) | ✅ | ⚠️ | ❌ | ❌ |
 | Informe de encargo para cliente (HTML + PDF) | ✅ | ❌ | ❌ | ❌ |
 | Hallazgos alineados con OWASP Top 10 A05 / CWE-78 | ✅ | ⚠️ parcial | ⚠️ parcial | ❌ |
@@ -474,7 +475,7 @@ Exit code: 2 (CRITICAL findings — immediate action required)
 - **Test de subida canary**: a diferencia de WPScan o Nikto, `vamp-wp2shell-audit` va más allá de la enumeración — `--canary` intenta una escritura de fichero PHP-inerte y lo borra inmediatamente vía el endpoint REST API DELETE, aportando prueba definitiva de que la explotación de subida es viable en el objetivo.
 - **Multi-objetivo asíncrono**: construido sobre `aiohttp` con semáforo configurable, un lote de 50 objetivos se escanea en el tiempo que WPScan tarda en cinco; la aplicación de scope garantiza que no se toca nada fuera del perímetro del encargo.
 - **Entregable listo para el cliente**: los campos `--client`, `--engagement` y `--auditor` alimentan un informe unificado HTML + PDF, listo para entregar al cliente sin postprocesado.
-- **Multi-CMS en un solo binario**: el fingerprinting de Joomla (CVE-2023-23752) y Drupal (CVE-2018-7600 Drupalgeddon 2) está integrado — útil cuando una lista de activos objetivo incluye instalaciones CMS mixtas.
+- **Precisión centrada en WordPress**: una base de datos CVE curada de plugins/temas con match por versión evita los falsos positivos de las conjeturas por versión genérica.
 
 ### Cobertura de checks
 
@@ -499,7 +500,8 @@ Exit code: 2 (CRITICAL findings — immediate action required)
 |---------|---------------------|
 | v1.2 | README bilingüe (EN/ES) |
 | v1.1 | Sample Output, comparativa Why, cobertura de checks |
-| v1.0 | Versión inicial — multi-objetivo asíncrono, subida canary, base de datos CVE, multi-CMS |
+| v1.3 | README corregido: la herramienta se centra en WordPress; eliminadas las afirmaciones no implementadas de multi-CMS Joomla/Drupal. |
+| v1.0 | Versión inicial — multi-objetivo asíncrono, subida canary, base de datos CVE |
 
 ### Aviso legal
 

@@ -3,7 +3,7 @@
 vamp_wp2shell_audit.py — Auditor de Vectores de Subida y Shell en WordPress
 =============================================================================
 VampSecure Labs · VampSecure Studios
-Para Uso Exclusivo en Pruebas de Penetración Autorizadas — v1.0
+Para Uso Exclusivo en Pruebas de Penetración Autorizadas — v1.3
 
 DESCRIPCIÓN GENERAL
 -------------------
@@ -97,7 +97,7 @@ BANNER = r"""
   \ V / (_| | / _ \ | |\/| | |_) \___ \| |___| | | | |_) |  _|   | |     / _ \ |  _ \___ \
    | |  \__, |/ ___ \| |  | |  __/ ___) |___  | |_| |  _ <| |___  | |___ / ___ \| |_) |__) |
    |_|     /_/_/   \_|_|  |_|_|   |____/\____|\___/|_| \_|_____| |_____/_/   \_|____/____/
-     by VampSecure Studios · vamp-wp2shell-audit v1.0 · WordPress Upload Vector Auditor
+     by VampSecure Studios · vamp-wp2shell-audit v1.3 · WordPress Upload Vector Auditor
      ──────────────────────────────────────────────────────────────────────────────────────
      USO EXCLUSIVO EN AUDITORÍAS AUTORIZADAS · El uso no autorizado es ilegal
 """
@@ -1179,7 +1179,7 @@ class ReportGenerator:
 {filas}
 </table>
 <div class="pie">
-Generado por vamp-wp2shell-audit v1.0 · VampSecure Labs · VampSecure Studios · {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}
+Generado por vamp-wp2shell-audit v1.3 · VampSecure Labs · VampSecure Studios · {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}
 </div>
 </body>
 </html>"""
