@@ -146,7 +146,7 @@ $ python3 vamp_wp2shell_audit.py \
     -c 5 --canary -o results.json
 
 ╭──────────────────────────────────────────────────────────────────╮
-│  vamp-wp2shell-audit v1.1 — WordPress Upload Vector Auditor      │
+│  vamp-wp2shell-audit v1.3 — WordPress Upload Vector Auditor      │
 │  VampSecure Labs Security Research Division                      │
 ╰──────────────────────────────────────────────────────────────────╯
 
@@ -399,7 +399,7 @@ $ python3 vamp_wp2shell_audit.py \
     -c 5 --canary -o results.json
 
 ╭──────────────────────────────────────────────────────────────────╮
-│  vamp-wp2shell-audit v1.1 — WordPress Upload Vector Auditor      │
+│  vamp-wp2shell-audit v1.3 — WordPress Upload Vector Auditor      │
 │  VampSecure Labs Security Research Division                      │
 ╰──────────────────────────────────────────────────────────────────╯
 
